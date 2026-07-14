@@ -1,27 +1,70 @@
 # ASCII Vision
 
-ASCII Vision is a professional Python-based desktop application designed to convert images into high-quality ASCII art using modern computer vision techniques, edge matching, histogram optimization, dithering, and perceptual similarity metrics (like SSIM).
+ASCII Vision is a professional Python-based desktop application designed to convert images into high-quality ASCII, Unicode, and Braille art. It leverages modern computer vision techniques, vectorized image processing, pre-rendered glyph caching, and structural similarity optimization (like SSIM) to deliver high-fidelity outputs.
 
-## Features (Planned)
-- Elegant modern GUI built with PySide6 (Qt) inspired by VS Code, GitHub Desktop, and Figma.
-- High-fidelity visual output with advanced image processing pipelines.
-- Multiple conversion algorithms across evolutionary phases:
-  - Phase 1: Classic Brightness Mapping
-  - Phase 2: Histogram Matching
-  - Phase 3: Dithering (Floyd-Steinberg, Atkinson, Bayer)
-  - Phase 4: Character Font Render & Pattern Comparison
-  - Phase 5: Mean Squared Error (MSE) Optimization
-  - Phase 6: Perceptual Optimization (SSIM)
-  - Phase 7: ASCII, Extended Unicode, Block/Shade, and Braille sets comparison.
-- Export options: TXT, HTML, SVG, PNG, Clipboard.
-- High performance powered by NumPy, Pillow, OpenCV, vectorized processing, character cache, and multi-threading.
+## Project Structure
+- `src/ascii_vision/`: The headless core conversion library.
+  - `frame_provider.py`: Abstraction for static images and frame streams.
+  - `glyph_cache.py`: Pre-renders character glyphs into bitmap matrices and calculates dynamic aspect ratio.
+  - `metrics.py`: Mathematical comparison algorithms (Brightness, MSE, SSIM).
+  - `engine.py`: Image pre-processing filters, scaling, and vectorized matching logic.
+  - `exporter.py`: Exporters for TXT, HTML, SVG, PNG, and Clipboard.
+  - `config.py`: JSON settings manager with font lookup fallbacks.
+- `src/ascii_vision_gui/`: The PySide6 desktop application interface.
+  - `worker.py`: Background thread worker utilizing Qt signals/slots for non-blocking UI rendering.
+  - `app.py`: Modern dark-themed GUI workbench with a draggable comparison slider.
+- `tests/`: Automated unit, integration, and benchmark tests.
+- `docs/`: Concept, specifications, and architecture documentation.
 
-## Tech Stack
-- Python 3.13+
-- PySide6 (Qt)
-- OpenCV
-- Pillow
-- NumPy
+---
+
+## Installation & Setup
+
+1. **Prerequisites**: Python 3.13+ (or 3.14)
+2. **Setup virtual environment**:
+   ```bash
+   python -m venv .venv
+   ```
+3. **Activate virtual environment**:
+   - Windows PowerShell:
+     ```powershell
+     .venv\Scripts\Activate.ps1
+     ```
+   - Linux/macOS:
+     ```bash
+     source .venv/bin/activate
+     ```
+4. **Install in editable mode with dependencies**:
+   ```bash
+   pip install -e .
+   ```
+
+---
+
+## Usage
+
+### 1. Launching the GUI
+To start the desktop application:
+```bash
+python -m ascii_vision_gui.app
+```
+**Features**:
+- Drag and drop images directly into the window.
+- Select quality presets or adjust advanced settings (brightness, contrast, metrics).
+- Drag the vertical comparison slider in the center panel to wipe between the original image and the ASCII preview.
+- View, copy, search, or customize the font of the final ASCII text in the bottom editor.
+
+### 2. Running Tests & Benchmarks
+- Run the test suite:
+  ```bash
+  pytest
+  ```
+- Run the benchmarks to see MSE vs SSIM timing:
+  ```bash
+  pytest tests/test_benchmark.py -s
+  ```
+
+---
 
 ## License
-MIT License
+MIT License.

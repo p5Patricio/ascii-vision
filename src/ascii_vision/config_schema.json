@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AsciiVisionConfig",
+  "type": "object",
+  "properties": {
+    "font_path": {
+      "type": "string",
+      "description": "Path to the TrueType font file."
+    },
+    "font_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Font size in pixels/points."
+    },
+    "charset": {
+      "type": "string",
+      "description": "Character set string or predefined charset identifier."
+    },
+    "preset": {
+      "type": "string",
+      "enum": ["Fast", "Balanced", "High", "Max"],
+      "description": "Resolution/performance preset for conversion."
+    },
+    "metric": {
+      "type": "string",
+      "enum": ["MSE", "SSIM", "Brightness"],
+      "description": "Visual comparison metric algorithm."
+    },
+    "preprocessing": {
+      "type": "object",
+      "properties": {
+        "brightness": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Brightness scale multiplier."
+        },
+        "contrast": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Contrast adjustment factor."
+        },
+        "sharpening": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Sharpening kernel factor."
+        },
+        "gaussian_blur": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Gaussian blur standard deviation."
+        }
+      },
+      "required": ["brightness", "contrast", "sharpening", "gaussian_blur"]
+    }
+  },
+  "required": ["font_path", "font_size", "charset", "preset", "metric", "preprocessing"]
+}
