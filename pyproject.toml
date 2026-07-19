@@ -13,13 +13,25 @@ dependencies = [
     "opencv-python>=4.5.0",
     "numpy>=1.20.0",
     "pillow>=9.0.0",
+    "jsonschema>=4.0.0",
+    "platformdirs>=3.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-benchmark>=4.0.0",
+    "ruff>=0.1.0",
+    "pytest-cov>=4.0.0",
+    "pytest-qt>=4.0.0",
 ]
+# PyAV-backed video decoding. Without it, OpenCV is used as a fallback.
+video = [
+    "av>=10.0.0",
+]
+
+[project.scripts]
+ascii-vision = "ascii_vision.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

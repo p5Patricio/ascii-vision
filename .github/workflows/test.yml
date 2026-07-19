@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies (xvfb + OpenGL)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libegl1-mesa libgl1-mesa-glx
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project with dev and video extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,video]"
+
+      - name: Run tests with xvfb (headless GUI support)
+        run: |
+          xvfb-run pytest -v \
+            --cov=ascii_vision \
+            --cov=ascii_vision_gui \
+            --cov-report=xml \
+            --cov-report=term
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
