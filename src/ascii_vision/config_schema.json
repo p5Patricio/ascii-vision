@@ -1,5 +1,43 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$defs": {
+    "profile": {
+      "title": "AsciiVisionProfile",
+      "type": "object",
+      "properties": {
+        "font_path": { "type": "string", "description": "Path to the TrueType font file." },
+        "font_size": { "type": "integer", "minimum": 1, "description": "Font size in pixels/points." },
+        "charset": { "type": "string", "description": "Character set string or predefined charset identifier." },
+        "preset": {
+          "type": "string",
+          "enum": ["Fast", "Balanced", "High", "Max", "Custom"],
+          "description": "Resolution/performance preset for conversion."
+        },
+        "metric": {
+          "type": "string",
+          "enum": ["MSE", "SSIM", "Brightness"],
+          "description": "Visual comparison metric algorithm."
+        },
+        "preprocessing": {
+          "type": "object",
+          "properties": {
+            "brightness": { "type": "number", "minimum": 0.0, "description": "Brightness scale multiplier." },
+            "contrast": { "type": "number", "minimum": 0.0, "description": "Contrast adjustment factor." },
+            "sharpening": { "type": "number", "minimum": 0.0, "description": "Sharpening kernel factor." },
+            "gaussian_blur": { "type": "number", "minimum": 0.0, "description": "Gaussian blur standard deviation." }
+          },
+          "required": ["brightness", "contrast", "sharpening", "gaussian_blur"]
+        },
+        "color_mode": { "type": "boolean", "description": "Enable color processing in conversion." },
+        "background_color": {
+          "type": "string",
+          "enum": ["Black", "White", "Transparent"],
+          "description": "Background color for the ASCII image."
+        }
+      },
+      "required": ["font_path", "font_size", "charset", "preset", "metric", "preprocessing", "color_mode", "background_color"]
+    }
+  },
   "title": "AsciiVisionConfig",
   "type": "object",
   "properties": {
@@ -18,7 +56,7 @@
     },
     "preset": {
       "type": "string",
-      "enum": ["Fast", "Balanced", "High", "Max"],
+      "enum": ["Fast", "Balanced", "High", "Max", "Custom"],
       "description": "Resolution/performance preset for conversion."
     },
     "metric": {
@@ -51,7 +89,16 @@
         }
       },
       "required": ["brightness", "contrast", "sharpening", "gaussian_blur"]
+    },
+    "color_mode": {
+      "type": "boolean",
+      "description": "Enable color processing in conversion."
+    },
+    "background_color": {
+      "type": "string",
+      "enum": ["Black", "White", "Transparent"],
+      "description": "Background color for the ASCII image."
     }
   },
-  "required": ["font_path", "font_size", "charset", "preset", "metric", "preprocessing"]
+  "required": ["font_path", "font_size", "charset", "preset", "metric", "preprocessing", "color_mode", "background_color"]
 }

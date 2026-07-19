@@ -27,7 +27,9 @@ class ConversionEngine:
             "Fast": "Brightness",
             "Balanced": "MSE",
             "High": "SSIM",
-            "Max": "SSIM"
+            "High Quality": "SSIM",
+            "Max": "SSIM",
+            "Maximum Quality": "SSIM",
         }
         self.metric = metric if metric is not None else preset_metrics.get(preset, "MSE")
         
@@ -35,7 +37,9 @@ class ConversionEngine:
             "Fast": (8, 8),
             "Balanced": (10, 10),
             "High": (10, 10),
-            "Max": None  # Native resolution
+            "High Quality": (10, 10),
+            "Max": None,  # Native resolution
+            "Maximum Quality": None,  # Native resolution
         }
         self.glyph_size = preset_sizes.get(preset, (10, 10))
         
@@ -151,7 +155,7 @@ class ConversionEngine:
             "complexity": complexity
         }
 
-    def convert(self, frame: np.ndarray, cols: int) -> np.ndarray:
+    def convert(self, frame: np.ndarray, cols: int, color_mode: bool = False) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """
         Converts the source frame into a 2D matrix of ASCII/Unicode characters.
         """
@@ -211,4 +215,32 @@ class ConversionEngine:
                         
                     char_matrix[r, c] = self.glyph_cache.charset[best_idx]
                     
+        if color_mode:
+            # 6. Extract the average RGB color of each cell/block from the original 'frame'
+            if frame.ndim == 2:
+                color_frame = np.stack([frame, frame, frame], axis=-1)
+            elif frame.ndim == 3 and frame.shape[2] == 1:
+                color_frame = np.concatenate([frame, frame, frame], axis=-1)
+            elif frame.ndim == 3 and frame.shape[2] == 4:
+                color_frame = frame[:, :, :3]
+            else:
+                color_frame = frame
+            
+            resized_color = cv2.resize(color_frame, (target_w, target_h), interpolation=cv2.INTER_AREA)
+            reshaped_color = resized_color.reshape(rows, gh, cols, gw, 3)
+            # Compute average RGB color for each block
+            color_matrix_raw = np.mean(reshaped_color, axis=(1, 3))
+            
+            # Quantize color matrix to nearest multiple of 16
+            color_matrix = self.quantize_color(color_matrix_raw)
+            return char_matrix, color_matrix
+            
         return char_matrix
+
+    @staticmethod
+    def quantize_color(color_matrix: np.ndarray) -> np.ndarray:
+        """
+        Quantizes RGB channel values to the nearest multiple of 16.
+        """
+        quantized = np.round(color_matrix / 16.0) * 16
+        return np.clip(quantized, 0, 255).astype(np.uint8)
