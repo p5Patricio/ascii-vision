@@ -9,7 +9,9 @@ ASCII Vision is a professional Python-based desktop application designed to conv
   - `metrics.py`: Mathematical comparison algorithms (Brightness, MSE, SSIM).
   - `engine.py`: Image pre-processing filters, scaling, vectorized matching, and RGB color quantization.
   - `exporter.py`: Exporters for HTML (optimized with RLE spans), SVG (optimized with RLE tspans), PNG, ANSI TXT, and Clipboard.
-  - `config.py`: JSON settings manager with font lookup fallbacks and color mode persistence.
+  - `config.py`: JSON settings manager with font lookup fallbacks, named profiles and color mode persistence.
+  - `resources.py`: Locates the bundled fonts (works from a checkout, a `pip install` and a frozen build) and swaps in a fallback font when the chosen one cannot draw the character set (e.g. Braille).
+  - `assets/fonts/`: Bundled JetBrains Mono (+ DejaVu Sans fallback) with their licences.
 - `src/ascii_vision_gui/`: The PySide6 desktop application interface.
   - `worker.py`: Background thread worker utilizing Qt signals/slots for non-blocking UI rendering, supporting RGB color calculation.
   - `app.py`: Modern dark-themed GUI workbench with a draggable comparison slider and color controls.
@@ -20,7 +22,7 @@ ASCII Vision is a professional Python-based desktop application designed to conv
 
 ## Installation & Setup
 
-1. **Prerequisites**: Python 3.13+ (or 3.14)
+1. **Prerequisites**: Python 3.13+
 2. **Setup virtual environment**:
    ```bash
    python -m venv .venv
@@ -46,13 +48,15 @@ ASCII Vision is a professional Python-based desktop application designed to conv
 ### 1. Launching the GUI
 To start the desktop application:
 ```bash
-python -m ascii_vision_gui.app
+ascii-vision-gui
+# or
+python -m ascii_vision_gui
 ```
 **GUI Controls**:
 - **Drag & Drop Zone**: Load images (PNG, JPG, BMP, WEBP, TIFF, GIF) by dragging them into the left panel.
 - **Color Mode**: Check the "Color Mode" box to enable 24-bit RGB rendering.
 - **Background Color**: Choose between Black, White, or Transparent backgrounds.
-- **Quality Presets**: Choose Fast, Balanced, High Quality, Maximum Quality, or Custom.
+- **Quality Presets**: Choose Fast (Shades, Brightness), Balanced (ASCII, MSE), High Quality (ASCII, SSIM), Maximum Quality (Braille, SSIM), or Custom. Each preset sets its own character set and metric.
 - **Split-Screen Slider**: Drag the vertical slider in the center panel to wipe between the original image and the ASCII preview.
 - **Bottom Monospace Editor**: Displays the full-resolution ASCII. If Color Mode is enabled, it renders rich HTML colors.
 - **Copy to Clipboard**: Copies plain text (monochrome) or ANSI-colored text (if Color Mode is enabled).
@@ -70,9 +74,17 @@ ascii-vision --input image.png --output out.txt --format svg
 # PNG output with color mode
 ascii-vision --input image.png --output out.png --color --background Black
 
-# Convert a video to ASCII MP4
-ascii-vision --input video.mp4 --output ascii.mp4 --columns 80 --fps 30
+# Convert a video to ASCII MP4 (keeps the input's frame rate and audio; H.264 output)
+ascii-vision --input video.mp4 --output ascii.mp4 --columns 80
+
+# Save your favourite settings once, reuse them later (flags you type still win)
+ascii-vision --save-profile poster --columns 140 --preset "High Quality" --color
+ascii-vision --profile poster --input photo.jpg --output photo.png
+ascii-vision --list-profiles
+
+ascii-vision --version
 ```
+Presets, metrics and backgrounds are case-insensitive (`--preset "maximum quality"`). Very large requests are refused with a clear message (limit: 400,000 characters per frame).
 
 The CLI is also available as a module:
 ```bash
@@ -89,7 +101,19 @@ This installs `av>=10.0.0`. Without it, OpenCV is used as a fallback.
 ### 4. Webcam Preview
 In the GUI, click **Start Webcam** to preview live ASCII art from the default camera. The preview uses the Fast preset with a small column count for responsiveness. Click **Stop Webcam** or close the window to release the camera.
 
-### 5. Running Tests & Benchmarks
+### 5. Building a Windows installer
+The application is Python + Qt, so the installer is built with PyInstaller (bundles Python and every
+dependency, users install nothing else) and Inno Setup (creates `ASCII-Vision-Setup-<version>.exe`):
+```bash
+pip install -e ".[video]" pyinstaller
+pyinstaller packaging/ascii-vision.spec --noconfirm
+iscc /DAppVersion=0.1.0 packaging\installer.iss      # Windows, Inno Setup 6
+```
+The `Windows installer` GitHub Actions workflow does all of this on a Windows runner (Actions tab ->
+*Run workflow*, or push a `v*` tag to attach the files to a release). Unsigned installers show the
+Windows SmartScreen warning; see `packaging/` and the workflow comments for signing options.
+
+### 6. Running Tests & Benchmarks
 - Run the test suite:
   ```bash
   pytest

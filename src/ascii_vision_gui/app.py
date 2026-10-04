@@ -8,6 +8,8 @@ from ascii_vision_gui.main_window import MainWindow
 
 def main():
     app = QApplication(sys.argv)
+    app.setApplicationName("ASCII Vision")
+    app.setOrganizationName("Symmetrical Code")
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

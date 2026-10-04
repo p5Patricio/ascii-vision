@@ -33,9 +33,15 @@ video = [
 [project.scripts]
 ascii-vision = "ascii_vision.cli:main"
 
+[project.gui-scripts]
+ascii-vision-gui = "ascii_vision_gui.app:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = ["ascii_vision", "ascii_vision_gui"]
+
+[tool.setuptools.package-data]
+ascii_vision = ["config_schema.json", "assets/fonts/*"]
 
 [tool.ruff.lint]
 # Real defects only (syntax errors, undefined names, unused imports/variables).

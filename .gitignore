@@ -112,3 +112,6 @@ openspec/*.yaml
 openspec/*.json
 .agents/
 .atl/
+
+# Keep the PyInstaller spec used for releases
+!packaging/*.spec

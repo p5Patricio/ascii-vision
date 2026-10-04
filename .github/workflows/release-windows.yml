@@ -1,0 +1,83 @@
+name: Windows installer
+
+# Builds ASCII-Vision-Setup-<version>.exe (Inno Setup) and a portable .zip.
+# Run it by hand from the Actions tab, or push a tag such as v0.1.0 to also attach
+# the files to a GitHub Release.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[video]" pyinstaller
+
+      - name: Smoke-test the sources before freezing
+        run: |
+          pip install -e ".[dev]"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          pytest -q -x --deselect tests/test_benchmark.py
+
+      - name: Build the application folder
+        run: pyinstaller packaging/ascii-vision.spec --noconfirm
+
+      - name: Smoke-test the frozen app
+        shell: pwsh
+        run: |
+          $exe = "dist\ASCII Vision\ascii-vision.exe"
+          & $exe --version
+          python -c "from PIL import Image; Image.new('RGB',(64,48),(200,80,40)).save('smoke.png')"
+          & $exe --input smoke.png --output smoke.txt --columns 20 --charset braille
+          if (-not (Test-Path smoke.txt) -or (Get-Item smoke.txt).Length -lt 10) { throw "frozen CLI produced no output" }
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])").Trim()
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      # --- Code signing (optional) -------------------------------------------------
+      # Unsigned installers trigger the Windows SmartScreen warning. When a signing
+      # certificate is available, add a step here that signs the .exe files before
+      # and after the Inno Setup step (e.g. SignPath, Azure Trusted Signing, or signtool
+      # with a certificate stored in repository secrets).
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" packaging\installer.iss
+
+      - name: Portable zip
+        shell: pwsh
+        run: Compress-Archive -Path "dist\ASCII Vision" -DestinationPath "dist\ASCII-Vision-${{ steps.ver.outputs.version }}-portable.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            dist/ASCII-Vision-Setup-*.exe
+            dist/ASCII-Vision-*-portable.zip
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/ASCII-Vision-Setup-*.exe
+            dist/ASCII-Vision-*-portable.zip
