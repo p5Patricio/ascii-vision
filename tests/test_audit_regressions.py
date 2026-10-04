@@ -280,3 +280,24 @@ def test_cli_video_keeps_source_fps_and_audio(tmp_path):
         assert video.average_rate == Fraction(25)
         assert video.width % 2 == 0 and video.height % 2 == 0
         assert any(s.type == "audio" for s in result.streams)
+
+
+def test_cli_reports_success_for_single_file(photo, tmp_path, capsys):
+    out = tmp_path / "art.txt"
+    assert main(["--input", photo, "--output", str(out)]) == 0
+    printed = capsys.readouterr().out
+    assert "Saved" in printed and str(out) in printed
+
+
+def test_cli_batch_prints_a_summary(photo, tmp_path, capsys):
+    out_dir = tmp_path / "out"
+    assert main(["--input-glob", photo, "--output", str(out_dir) + "/", "--format", "txt"]) == 0
+    assert "1 file converted" in capsys.readouterr().out
+
+
+def test_cli_success_marker_falls_back_on_ascii_consoles(monkeypatch):
+    import io
+    from ascii_vision import cli
+
+    monkeypatch.setattr("sys.stdout", io.TextIOWrapper(io.BytesIO(), encoding="ascii"))
+    assert cli._ok("done") == "OK done"

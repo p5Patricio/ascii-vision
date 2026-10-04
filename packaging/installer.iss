@@ -14,6 +14,7 @@ AppPublisher=Symmetrical Code
 DefaultDirName={autopf}\ASCII Vision
 DefaultGroupName=ASCII Vision
 UninstallDisplayIcon={app}\ASCII Vision.exe
+SetupIconFile=app.ico
 OutputDir=..\dist
 OutputBaseFilename=ASCII-Vision-Setup-{#AppVersion}
 Compression=lzma2/max

@@ -125,5 +125,10 @@ Windows SmartScreen warning; see `packaging/` and the workflow comments for sign
 
 ---
 
+## Website and promo video
+- `site/` is a one-page landing site with the installer download button (published to GitHub Pages by the
+  `Landing page` workflow; see `site/README.md`).
+- `promo/` holds the 40-second vertical promo video and the code that renders it (see `promo/README.md`).
+
 ## License
 MIT License.

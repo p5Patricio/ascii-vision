@@ -105,7 +105,7 @@ let ctx0, ctx1, ctx3, ctx4, ctx6, ctxw, ctx7, ctx8;
 
 function setup() {
   document.querySelectorAll('h1.hl').forEach(buildHeadline);
-  SCENES.forEach(([id]) => { if (id === 's10') return; const sec = el[id], wrap = document.createElement('div'); wrap.className = 'body'; wrap.style.cssText = 'position:absolute;inset:0;transform:translateY(' + (id === 's1' ? 110 : 120) + 'px)';
+  SCENES.forEach(([id]) => { if (id === 's10') return; const sec = el[id], wrap = document.createElement('div'); wrap.className = 'body'; wrap.style.cssText = 'position:absolute;inset:0;transform:translateY(' + (id === 's1' ? 110 : id === 's9' ? 170 : 120) + 'px)';
     Array.from(sec.children).forEach(c => { if (!c.matches('h1.hl')) wrap.appendChild(c); }); sec.appendChild(wrap); });
   ctx0 = $('s0cv').getContext('2d'); ctx1 = $('s1cv').getContext('2d'); ctx3 = $('s3cv').getContext('2d'); ctx4 = $('s4cv').getContext('2d');
   ctx6 = $('s6cv').getContext('2d'); ctxw = $('s6wave').getContext('2d'); ctx7 = $('s7cv').getContext('2d');
@@ -124,7 +124,7 @@ function setup() {
   $('s3chips').innerHTML = html;
   // S4 chips
   html = ''; [['Black', 60], ['White', 300], ['Transparent', 540]].forEach((c, i) => { html += `<div class="chip" id="s4c${i}" style="left:${c[1]}px;top:1290px;width:${i == 2 ? 480 : 220}px;text-align:center">${c[0]}</div>`; });
-  html += `<div class="chip" id="s4c3" style="left:60px;top:1390px;width:960px;text-align:center">RGB 24 bits · ANSI · HTML · SVG · PNG</div>`;
+  html += `<div class="chip" id="s4c3" style="left:60px;top:1390px;width:960px;text-align:center">Color por carácter · ANSI · HTML · SVG · PNG</div>`;
   $('s4chips').innerHTML = html;
   // S5 list
   const E = [['TXT', 'ascii_art.txt', 'Texto con color ANSI 24 bits'], ['HTML', 'ascii_art.html', 'Autónomo y comprimido por tramos'], ['SVG', 'ascii_art.svg', 'Vectorial: escala sin perder nitidez'],
@@ -142,7 +142,8 @@ function setup() {
   // S6 chips, S9 chips
   html = ''; ['FPS ORIGINAL', 'AUDIO CONSERVADO', 'H.264'].forEach((c, i) => { html += `<div class="chip" id="s6c${i}" style="left:${[90, 392, 746][i]}px;top:1500px">${c}</div>`; });
   $('s6chips').innerHTML = html;
-  html = ''; [['Windows 10 / 11', 110, 1420], ['Sin instalar Python', 470, 1420], ['Sin permisos de administrador', 190, 1500]].forEach((c, i) => { html += `<div class="chip on" id="s9c${i}" style="left:${c[1]}px;top:${c[2]}px">${c[0]}</div>`; });
+  html = '<div style="display:flex;gap:16px">'; ['Windows 10 / 11', 'Sin instalar Python'].forEach((c, i) => { html += `<div class="chip on" id="s9c${i}" style="position:static">${c}</div>`; });
+  html += '</div><div class="chip on" id="s9c2" style="position:static">Sin permisos de administrador</div>';
   $('s9chips').innerHTML = html;
   // pre-rendered offscreens
   ['ascii', 'shades', 'blocks', 'braille'].forEach(n => { const o = offscreen(960, 720); const c = o.getContext('2d'); c.fillStyle = '#05070f'; c.fillRect(0, 0, 960, 720); drawAscii(c, DATA['cs_' + n], 30, 30, 900, 675); OFF['cs_' + n] = o; });
@@ -158,9 +159,9 @@ function setup() {
 
 // ---------------------------------------------------------------- terminal typewriter
 const term = { lines: [
-  ['$ ascii-vision --input foto.jpg --output arte.png --color', 'cmd'], ['✔ arte.png guardado', 'ok'],
-  ['$ ascii-vision --input-glob "fotos/*.jpg" --output out/', 'cmd'], ['✔ 48 imágenes convertidas', 'ok'],
-  ['$ ascii-vision --input clip.mp4 --output ascii.mp4', 'cmd'], ['✔ ascii.mp4 · 30 fps · con audio', 'ok']], sched: [],
+  ['$ ascii-vision --input foto.jpg --output arte.png --color', 'cmd'], ['✔ Saved arte.png', 'ok'],
+  ['$ ascii-vision --input-glob "fotos/*.jpg" --output out/', 'cmd'], ['✔ 48 files converted', 'ok'],
+  ['$ ascii-vision --input clip.mp4 --output ascii.mp4', 'cmd'], ['✔ Saved ascii.mp4', 'ok']], sched: [],
   init() { let t = 0.55; this.lines.forEach(l => { const n = l[0].length; if (l[1] === 'cmd') { this.sched.push([t, t + n / 120]); t += n / 120 + .2; } else { this.sched.push([t, t]); t += .14; } }); this.end = t; },
   color(s) {
     const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -256,7 +257,7 @@ function u6(L) {
   ['s6c0', 's6c1', 's6c2'].forEach((id, i) => pop($(id), ebk(prog(L, 1.0 + i * .2, 1.5 + i * .2))));
 }
 function u7(L) {
-  const f = Math.floor(L * 30) % 60; ctx7.fillStyle = '#02050f'; ctx7.fillRect(0, 0, 900, 675); drawAscii(ctx7, DATA.blob[f], 0, 0, 900, 675);
+  const f = Math.floor(L * 30) % 60; ctx7.fillStyle = '#02050f'; ctx7.fillRect(0, 0, 900, 675); drawAscii(ctx7, DATA.blob[f], 70, 60, 760, 570);
   $('s7rec').style.opacity = Math.floor(L * 2) % 2 ? .25 : 1;
   const dip = prog(L, .7, 1.0) * (1 - prog(L, 1.5, 1.8)), fps = Math.round(lerp(30, 21, dip)), cols = Math.round(lerp(56, 40, dip));
   $('s7fps').textContent = `${fps} FPS`; $('s7fps').style.color = dip > .5 ? '#ffd27a' : '#35e07a';

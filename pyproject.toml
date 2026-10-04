@@ -41,7 +41,7 @@ package-dir = {"" = "src"}
 packages = ["ascii_vision", "ascii_vision_gui"]
 
 [tool.setuptools.package-data]
-ascii_vision = ["config_schema.json", "assets/fonts/*"]
+ascii_vision = ["config_schema.json", "assets/*.png", "assets/fonts/*"]
 
 [tool.ruff.lint]
 # Real defects only (syntax errors, undefined names, unused imports/variables).

@@ -19,13 +19,26 @@ FALLBACK_FONT_NAME = "DejaVuSans.ttf"
 _UNASSIGNED_CODEPOINT = "\U0010FFFF"
 
 
-def _candidate_font_dirs() -> list[str]:
+def _candidate_asset_dirs(*sub: str) -> list[str]:
     package_dir = os.path.dirname(os.path.abspath(__file__))
-    dirs = [os.path.join(package_dir, "assets", "fonts")]
+    dirs = [os.path.join(package_dir, "assets", *sub)]
     frozen_root = getattr(sys, "_MEIPASS", None)  # PyInstaller
     if frozen_root:
-        dirs.insert(0, os.path.join(frozen_root, "ascii_vision", "assets", "fonts"))
+        dirs.insert(0, os.path.join(frozen_root, "ascii_vision", "assets", *sub))
     return dirs
+
+
+def _candidate_font_dirs() -> list[str]:
+    return _candidate_asset_dirs("fonts")
+
+
+def bundled_asset_path(name: str) -> str | None:
+    """Absolute path of a file in the package's ``assets`` folder (e.g. ``icon.png``)."""
+    for directory in _candidate_asset_dirs():
+        path = os.path.join(directory, name)
+        if os.path.isfile(path):
+            return path
+    return None
 
 
 def bundled_font_path(name: str = DEFAULT_FONT_NAME) -> str | None:

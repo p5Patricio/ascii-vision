@@ -45,7 +45,7 @@ canvas{display:block}
 
   <div id="top"><div class="l"><span class="dot"></span><span>// ASCII VISION</span></div>
     <div class="r"><span>SYMMETRICAL CODE</span>
-      <svg width="26" height="30" viewBox="0 0 280 322"><use href="#logo"/></svg></div></div>
+      <img src="assets/logo.png" alt="" style="height:32px;width:auto;display:block"></div></div>
 
   <!-- S0 hook -->
   <section class="scene" id="s0">
@@ -84,7 +84,7 @@ canvas{display:block}
 
   <!-- S4 color -->
   <section class="scene" id="s4">
-    <h1 class="hl" data-t="Color real,<br>{24 bits.}"></h1>
+    <h1 class="hl" data-t="Cada letra,<br>{su color.}"></h1>
     <div class="card" id="s4card" style="left:60px;top:520px;width:960px;height:720px"><canvas id="s4cv" width="960" height="720"></canvas></div>
     <div id="s4chips"></div>
   </section>
@@ -99,7 +99,7 @@ canvas{display:block}
   <section class="scene" id="s6">
     <h1 class="hl" data-t="Video, con<br>{audio.}"></h1>
     <div class="card" style="left:90px;top:520px;width:900px;height:760px;background:#02050f"><canvas id="s6cv" width="900" height="760"></canvas>
-      <div style="position:absolute;left:24px;top:22px;padding:8px 16px;border-radius:8px;background:rgba(25,224,255,.16);border:1px solid var(--cy);font:700 18px 'Space Mono';color:#fff">ASCII · H.264</div>
+      <div style="position:absolute;left:24px;top:22px;padding:8px 16px;border-radius:8px;background:rgba(25,224,255,.16);border:1px solid var(--cy);font:700 18px 'Space Mono';color:#fff">CLI · ASCII · H.264</div>
       <div id="s6pip" style="position:absolute;right:22px;bottom:22px;width:210px;height:210px;border-radius:14px;border:2px solid rgba(255,255,255,.35);background:#000 url(assets/donut_strip.jpg) 0 0/2100px 210px;box-shadow:0 10px 40px #000"><span style="position:absolute;left:8px;top:6px;font:700 14px 'Space Mono';color:#fff">ORIGINAL</span></div>
     </div>
     <div class="card" style="left:90px;top:1310px;width:900px;height:150px"><canvas id="s6wave" width="900" height="150"></canvas>
@@ -132,40 +132,32 @@ canvas{display:block}
   <!-- S9 installer -->
   <section class="scene" id="s9">
     <h1 class="hl" data-t="Instálalo en<br>{un clic.}"></h1>
-    <div class="card" id="s9dlg" style="left:110px;top:560px;width:860px;height:560px;background:#f3f5f9;border-radius:14px">
+    <div class="card" id="s9dlg" style="left:110px;top:520px;width:860px;height:440px;background:#f3f5f9;border-radius:14px">
       <div style="height:54px;background:#fff;border-bottom:1px solid #d9dde6;display:flex;align-items:center;padding:0 20px;font:600 20px 'Inter';color:#1a2233;gap:12px"><span style="width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#19e0ff,#1f5cff);display:block"></span>Instalación de ASCII Vision</div>
       <div style="padding:44px 52px;color:#1a2233">
         <div style="font:700 34px 'Inter'" id="s9t">Instalando…</div>
         <div style="margin-top:12px;font:500 22px 'Inter';color:#55607a" id="s9s">Copiando archivos…</div>
         <div style="margin-top:46px;height:34px;border-radius:7px;background:#dfe4ef;overflow:hidden;border:1px solid #c9d0df"><div id="s9bar" style="height:100%;width:0;background:linear-gradient(90deg,#1f5cff,#19e0ff)"></div></div>
         <div style="margin-top:12px;font:600 20px 'Space Mono';color:#55607a" id="s9p">0 %</div>
-        <div style="position:absolute;right:44px;bottom:36px"><span class="btn" id="s9btn" style="background:#1f5cff;font-size:24px;padding:16px 38px;opacity:.35">Finalizar</span></div></div></div>
-    <div id="s9ico" style="position:absolute;left:440px;top:1170px;width:200px;text-align:center;font:600 22px 'Inter';color:#dfe8ff">
-      <div style="width:150px;height:150px;margin:0 auto 12px;border-radius:30px;background:#0a1226;border:2px solid rgba(25,224,255,.5);box-shadow:0 0 50px rgba(25,224,255,.45);display:flex;align-items:center;justify-content:center;font:800 56px 'JB';color:var(--cy)">▒@░</div>ASCII Vision</div>
-    <div id="s9chips"></div>
+        <div style="position:absolute;right:44px;bottom:30px"><span class="btn" id="s9btn" style="background:#1f5cff;font-size:24px;padding:16px 38px;opacity:.35">Finalizar</span></div></div></div>
+    <div id="s9ico" style="position:absolute;left:440px;top:1010px;width:200px;text-align:center;font:600 22px 'Inter';color:#dfe8ff">
+      <img src="../src/ascii_vision/assets/icon.png" alt="" style="width:160px;height:160px;display:block;margin:0 auto 10px;filter:drop-shadow(0 0 30px rgba(25,224,255,.55))">ASCII Vision</div>
+    <div id="s9chips" style="position:absolute;left:0;right:0;top:1250px;display:flex;flex-direction:column;align-items:center;gap:18px"></div>
   </section>
 
   <!-- S10 end -->
   <section class="scene" id="s10">
-    <div id="endglow" style="position:absolute;left:140px;top:420px;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(31,92,255,.55),rgba(31,92,255,.12) 45%,transparent 70%)"></div>
-    <svg id="endlogo" style="position:absolute;left:390px;top:560px" width="300" height="344" viewBox="0 0 280 322"><use href="#logo"/></svg>
-    <div id="endby" class="mono" style="position:absolute;left:0;right:0;top:980px;text-align:center;font:700 22px 'Space Mono';letter-spacing:.34em;color:#8aa0cc">DESARROLLADO POR</div>
-    <div id="endname" style="position:absolute;left:0;right:0;top:1030px;text-align:center;font:800 60px 'Syne';letter-spacing:-.02em;white-space:nowrap">Symmetrical<span style="color:var(--bl)">Code</span></div>
-    <div id="endtag" style="position:absolute;left:0;right:0;top:1150px;text-align:center;font:500 30px 'Inter';color:#b3c0de">Software empresarial a la medida</div>
+    <div id="endglow" style="position:absolute;left:140px;top:500px;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(31,92,255,.55),rgba(31,92,255,.12) 45%,transparent 70%)"></div>
+    <img id="endlogo" src="assets/logo.png" alt="Symmetrical Code" style="position:absolute;left:390px;top:620px;width:300px;height:300px;object-fit:contain">
+    <div id="endby" class="mono" style="position:absolute;left:0;right:0;top:1010px;text-align:center;font:700 22px 'Space Mono';letter-spacing:.34em;color:#8aa0cc">DESARROLLADO POR</div>
+    <div id="endname" style="position:absolute;left:0;right:0;top:1062px;text-align:center;font:800 60px 'Syne';letter-spacing:-.02em;white-space:nowrap">Symmetrical<span style="color:var(--bl)">Code</span></div>
+    <div id="endtag" style="position:absolute;left:0;right:0;top:1180px;text-align:center;font:500 30px 'Inter';color:#b3c0de">Software empresarial a la medida</div>
   </section>
 
   <div id="prog"></div>
 </div>
 
-<svg width="0" height="0" style="position:absolute">
-  <defs>
-    <linearGradient id="gc" gradientUnits="userSpaceOnUse" x1="60" y1="20" x2="250" y2="210"><stop offset="0" stop-color="#00e0e0"/><stop offset="1" stop-color="#0090c2"/></linearGradient>
-    <linearGradient id="gb" gradientUnits="userSpaceOnUse" x1="60" y1="20" x2="250" y2="210"><stop offset="0" stop-color="#1a8bff"/><stop offset="1" stop-color="#0047d8"/></linearGradient>
-    <g id="piece"><path d="M140 17L251 81Q259 86 259 95L259 123Q259 134 249 128L140 64L70 104Q62 109 62 117L62 127L132 168Q140 173 140 182L140 207Q140 219 129 213L34 158Q21 151 21 140L21 100Q21 89 31 83Z"/>
-      <path d="M140 64L178 41L251 81Q259 86 259 95L259 123Q259 134 249 128Z" fill="#00405f" fill-opacity=".16"/></g>
-    <g id="logo"><use href="#piece" fill="url(#gc)"/><use href="#piece" fill="url(#gb)" transform="rotate(180 140 161.5)"/></g>
-  </defs>
-</svg>
+
 <script src="assets/data.js"></script>
 <script src="scenes.js"></script>
 </body></html>

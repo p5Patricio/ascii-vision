@@ -32,6 +32,28 @@ DEFAULT_COLUMNS = 100
 DEFAULT_FPS = 30
 
 
+def _ok(message: str) -> str:
+    """Prefix a success message with a check mark, or "OK" on consoles that cannot print it."""
+    mark = "\u2714"
+    try:
+        mark.encode(getattr(sys.stdout, "encoding", None) or "ascii")
+    except (UnicodeEncodeError, LookupError):
+        mark = "OK"
+    return f"{mark} {message}"
+
+
+def _saved_message(result) -> str:
+    """Success line for the value returned by ``run_conversion``.
+
+    Raises ``RuntimeError`` when the clipboard could not be written (it returns False).
+    """
+    if result is True:
+        return _ok("Copied to clipboard")
+    if result is False:
+        raise RuntimeError("Could not copy to the clipboard.")
+    return _ok(f"Saved {result}")
+
+
 def _positive_int(value: str) -> int:
     try:
         number = int(value)
@@ -347,12 +369,15 @@ def _run_batch(
 
         if processed == 0:
             return 1
+        noun = "file" if processed == 1 else "files"
+        failed = len(files) - processed
+        print(_ok(f"{processed} {noun} converted" + (f" ({failed} failed)" if failed else "")))
         return 0
 
     # --- Single output path with exactly one file ----------------------------
     file_args = argparse.Namespace(**vars(args))
     file_args.input = files[0]
-    run_conversion(file_args, base_config=base_config)
+    print(_saved_message(run_conversion(file_args, base_config=base_config)))
     return 0
 
 
@@ -533,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        run_conversion(args, base_config=base_config)
+        print(_saved_message(run_conversion(args, base_config=base_config)))
         return 0
     except (Exception, KeyboardInterrupt, SystemExit) as exc:
         print(f"Error: {exc}", file=sys.stderr)
