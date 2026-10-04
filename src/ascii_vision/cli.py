@@ -1,10 +1,10 @@
 import argparse
 import os
 import sys
-from typing import Optional
 
 import numpy as np
 
+from ascii_vision import __version__
 from ascii_vision.config import ConfigManager
 from ascii_vision.engine import ConversionEngine
 from ascii_vision.exporter import ExportManager
@@ -17,19 +17,58 @@ from ascii_vision.frame_provider import (
 from ascii_vision.glyph_cache import GlyphCache
 from ascii_vision.video_exporter import VideoExporter
 
-
 # File extensions treated as video sources.
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".gif", ".ogv"}
+
+
+# Canonical option names. Matching is case-insensitive; the GUI's preset names
+# ("High Quality", "Maximum Quality") are accepted alongside the short ones.
+PRESET_CHOICES = ("Fast", "Balanced", "High", "High Quality", "Max", "Maximum Quality", "Custom")
+METRIC_CHOICES = ("Brightness", "MSE", "SSIM")
+BACKGROUND_CHOICES = ("Black", "White", "Transparent")
+
+# Fallback values used when neither the command line nor a profile gives one.
+DEFAULT_COLUMNS = 100
+DEFAULT_FPS = 30
+
+
+def _positive_int(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"'{value}' is not a whole number") from None
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1 (got {number})")
+    return number
+
+
+def _choice_of(choices: tuple[str, ...]):
+    """argparse ``type`` that maps any capitalisation onto the canonical name."""
+    lookup = {c.lower(): c for c in choices}
+
+    def convert(value: str) -> str:
+        canonical = lookup.get(value.strip().lower())
+        if canonical is None:
+            raise argparse.ArgumentTypeError(
+                f"invalid choice '{value}' (choose from {', '.join(choices)})"
+            )
+        return canonical
+
+    return convert
 
 
 def build_parser() -> argparse.ArgumentParser:
     """
     Builds the argparse parser for the ``ascii-vision`` CLI.
+
+    Options that a profile can also set default to ``None`` so that a profile is
+    only overridden by flags the user actually typed.
     """
     parser = argparse.ArgumentParser(
         prog="ascii-vision",
         description="Convert images and videos to ASCII art from the command line.",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--input", help="Path to the input image or video.")
     parser.add_argument("--output", help="Path for the output file.")
     parser.add_argument(
@@ -41,46 +80,50 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--columns",
-        type=int,
-        default=100,
-        help="Number of ASCII columns to generate (default: 100).",
+        type=_positive_int,
+        default=None,
+        help=f"Number of ASCII columns to generate (default: {DEFAULT_COLUMNS}).",
     )
     parser.add_argument(
         "--color",
         action="store_true",
+        default=None,
         help="Enable color mode and preserve per-cell colors in the output.",
     )
     parser.add_argument(
         "--preset",
-        default="Balanced",
-        help="Conversion preset: Fast, Balanced, High, Max (default: Balanced).",
+        type=_choice_of(PRESET_CHOICES),
+        default=None,
+        help="Conversion preset: " + ", ".join(PRESET_CHOICES) + " (default: Balanced).",
     )
     parser.add_argument(
         "--metric",
+        type=_choice_of(METRIC_CHOICES),
         default=None,
         help="Similarity metric: Brightness, MSE, SSIM. Defaults to preset choice.",
     )
     parser.add_argument(
         "--charset",
-        default="ascii",
-        help="Character set preset or custom string (default: ascii).",
+        default=None,
+        help="Character set preset (ascii, shades, blocks, braille) or a custom string (default: ascii).",
     )
     parser.add_argument(
         "--font-size",
-        type=int,
-        default=12,
+        type=_positive_int,
+        default=None,
         help="Font size used for PNG, HTML, and SVG output (default: 12).",
     )
     parser.add_argument(
         "--background",
-        default="Black",
+        type=_choice_of(BACKGROUND_CHOICES),
+        default=None,
         help="Background color: Black, White, Transparent (default: Black).",
     )
     parser.add_argument(
         "--fps",
-        type=int,
-        default=30,
-        help="Frames per second for video output (default: 30).",
+        type=_positive_int,
+        default=None,
+        help="Frames per second for video output (default: same as the input video).",
     )
     parser.add_argument(
         "--font-path",
@@ -118,6 +161,33 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _resolve_settings(args: argparse.Namespace, base_config: dict | None) -> dict:
+    """
+    Merges defaults, an optional profile and the flags the user typed.
+
+    Precedence (highest first): explicit command-line flag, profile value,
+    built-in default.
+    """
+    config = dict(base_config) if base_config else ConfigManager.get_default_config()
+
+    def pick(flag, key, default):
+        return flag if flag is not None else config.get(key, default)
+
+    config.update(
+        {
+            "font_path": args.font_path or config.get("font_path", ConfigManager.DEFAULT_FONT_RELATIVE_PATH),
+            "font_size": pick(args.font_size, "font_size", 12),
+            "charset": pick(args.charset, "charset", "ascii"),
+            "preset": pick(args.preset, "preset", "Balanced"),
+            "metric": pick(args.metric, "metric", "MSE"),
+            "color_mode": bool(pick(args.color, "color_mode", False)),
+            "background_color": pick(args.background, "background_color", "Black"),
+            "columns": pick(args.columns, "columns", DEFAULT_COLUMNS),
+        }
+    )
+    return config
+
+
 def _resolve_font_name(font_path: str) -> str:
     """
     Returns a reasonable font family name for HTML/SVG exports.
@@ -143,7 +213,7 @@ def _create_provider(input_path: str) -> FrameProvider:
 
 def _render_frame(
     char_matrix: np.ndarray,
-    color_matrix: Optional[np.ndarray],
+    color_matrix: np.ndarray | None,
     font_path: str,
     font_size: int,
     bg_color: str,
@@ -165,15 +235,17 @@ def _build_engine(config: dict) -> ConversionEngine:
         font_size=config["font_size"],
         charset=config["charset"],
     )
-    return ConversionEngine(
+    engine = ConversionEngine(
         glyph_cache,
         metric=config["metric"],
         preset=config["preset"],
         preprocessing=config["preprocessing"],
     )
+    engine.invert = str(config.get("background_color", "")).lower() == "white"
+    return engine
 
 
-def _resolve_output_format(output_path: str, explicit_format: Optional[str]) -> str:
+def _resolve_output_format(output_path: str, explicit_format: str | None) -> str:
     """
     Normalizes the target format from the explicit flag or the file extension.
     """
@@ -256,7 +328,8 @@ def _run_batch(
         # --- Directory output: derive per-file names -------------------------
         os.makedirs(args.output, exist_ok=True)
         fmt = args.format if args.format else "html"
-        preset_slug = args.preset.replace(" ", "_")
+        preset_name = args.preset or (base_config or {}).get("preset") or "Balanced"
+        preset_slug = preset_name.replace(" ", "_")
 
         processed = 0
         for input_file in files:
@@ -288,7 +361,7 @@ def _run_image_output(
     engine: ConversionEngine,
     config: dict,
     output_path: str,
-    fmt: Optional[str],
+    fmt: str | None,
 ) -> str:
     """
     Converts every input frame and saves the final ASCII result to a file.
@@ -325,12 +398,20 @@ def _run_video_output(
     engine: ConversionEngine,
     config: dict,
     output_path: str,
-    fps: int,
+    fps: int | None,
+    source_path: str | None = None,
 ) -> str:
     """
     Converts every input frame to ASCII and writes a video of the rendered frames.
+
+    The output keeps the input's frame rate (unless *fps* is given) and, for
+    video inputs, its audio track.
     """
     exporter = VideoExporter()
+    if fps is None:
+        source_fps = getattr(provider, "fps", 0.0)
+        fps = int(round(source_fps)) if source_fps else DEFAULT_FPS
+    is_video_source = isinstance(provider, VideoFrameProvider)
 
     def ascii_frames():
         for frame in provider.get_frames():
@@ -348,11 +429,14 @@ def _run_video_output(
                 config["background_color"],
             )
 
-    exporter.write(ascii_frames(), output_path, fps=fps)
+    exporter.write(
+        ascii_frames(), output_path, fps=fps,
+        source_audio=source_path if is_video_source else None,
+    )
     return output_path
 
 
-def run_conversion(args: argparse.Namespace, base_config: Optional[dict] = None) -> str:
+def run_conversion(args: argparse.Namespace, base_config: dict | None = None) -> str:
     """
     Executes the conversion pipeline for the parsed CLI arguments.
 
@@ -363,38 +447,26 @@ def run_conversion(args: argparse.Namespace, base_config: Optional[dict] = None)
 
     Returns the output path on success.
     """
-    config = dict(base_config) if base_config else ConfigManager().get_default_config()
-    # CLI args override any existing (profile or default) values
-    config.update(
-        {
-            "font_path": args.font_path if args.font_path else config.get("font_path", ConfigManager.DEFAULT_FONT_RELATIVE_PATH),
-            "font_size": args.font_size,
-            "charset": args.charset,
-            "preset": args.preset,
-            "metric": args.metric if args.metric else config["metric"],
-            "color_mode": args.color,
-            "background_color": args.background,
-            "columns": args.columns,
-        }
-    )
-
     cm = ConfigManager()
-    cm.set_config(config)
+    cm.set_config(_resolve_settings(args, base_config))
     config = cm.config
 
     provider = _create_provider(args.input)
-    engine = _build_engine(config)
-
     try:
+        engine = _build_engine(config)
+        # The glyph cache may have swapped in a fallback font that covers the
+        # character set (e.g. Braille); render the output with that same font.
+        config["font_path"] = engine.glyph_cache.font_path
+
         output_format = _resolve_output_format(args.output, args.format)
         if output_format in VideoExporter.SUPPORTED_FORMATS:
-            return _run_video_output(provider, engine, config, args.output, args.fps)
+            return _run_video_output(provider, engine, config, args.output, args.fps, args.input)
         return _run_image_output(provider, engine, config, args.output, args.format)
     finally:
         provider.cleanup()
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """
     CLI entry point.
 
@@ -415,20 +487,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
 
     if args.save_profile:
-        config = cm.get_default_config()
-        config.update(
-            {
-                "font_path": args.font_path if args.font_path else ConfigManager.DEFAULT_FONT_RELATIVE_PATH,
-                "font_size": args.font_size,
-                "charset": args.charset,
-                "preset": args.preset,
-                "metric": args.metric if args.metric else config["metric"],
-                "color_mode": args.color,
-                "background_color": args.background,
-                "columns": args.columns,
-            }
-        )
-        cm.set_config(config)
+        try:
+            ConfigManager.validate_profile_name(args.save_profile)
+        except ValueError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        # Start from the profile named by --profile (if any) so flags tweak it.
+        starting_point = None
+        if args.profile:
+            try:
+                cm.load_profile(args.profile)
+                starting_point = cm.config
+            except FileNotFoundError:
+                print(f"Error: Profile '{args.profile}' not found.", file=sys.stderr)
+                return 1
+            except Exception as exc:
+                print(f"Error: Could not load profile '{args.profile}': {exc}", file=sys.stderr)
+                return 1
+        cm.set_config(_resolve_settings(args, starting_point))
         cm.save_profile(args.save_profile)
         print(f"Profile '{args.save_profile}' saved.")
         return 0
@@ -441,6 +517,9 @@ def main(argv: Optional[list[str]] = None) -> int:
             base_config = cm.config
         except FileNotFoundError:
             print(f"Error: Profile '{args.profile}' not found.", file=sys.stderr)
+            return 1
+        except Exception as exc:
+            print(f"Error: Could not load profile '{args.profile}': {exc}", file=sys.stderr)
             return 1
 
     # --- Batch processing path ---

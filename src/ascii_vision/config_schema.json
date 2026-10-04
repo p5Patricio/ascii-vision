@@ -10,7 +10,7 @@
         "charset": { "type": "string", "description": "Character set string or predefined charset identifier." },
         "preset": {
           "type": "string",
-          "enum": ["Fast", "Balanced", "High", "Max", "Custom"],
+          "enum": ["Fast", "Balanced", "High", "High Quality", "Max", "Maximum Quality", "Custom"],
           "description": "Resolution/performance preset for conversion."
         },
         "metric": {
@@ -56,7 +56,7 @@
     },
     "preset": {
       "type": "string",
-      "enum": ["Fast", "Balanced", "High", "Max", "Custom"],
+      "enum": ["Fast", "Balanced", "High", "High Quality", "Max", "Maximum Quality", "Custom"],
       "description": "Resolution/performance preset for conversion."
     },
     "metric": {

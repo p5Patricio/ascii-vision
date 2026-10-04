@@ -1,12 +1,14 @@
 import os
 import tempfile
+
 import numpy as np
 import pytest
 from PIL import Image
 
-from ascii_vision.exporter import ExportManager, to_txt
+from ascii_vision.exporter import ExportManager
+from ascii_vision.resources import default_font_path
 
-TEST_FONT_PATH = "assets/fonts/JetBrainsMono-Regular.ttf"
+TEST_FONT_PATH = default_font_path()
 
 
 @pytest.fixture

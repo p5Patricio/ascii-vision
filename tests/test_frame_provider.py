@@ -50,26 +50,34 @@ class TestVideoFrameProvider:
             for frame in frames:
                 assert frame.shape == (8, 8, 3)
 
-    def test_video_provider_releases_capture_on_cleanup(self):
+    @pytest.mark.parametrize("backend", ["cv2", "av"])
+    def test_video_provider_releases_capture_on_cleanup(self, backend):
+        if backend == "av":
+            pytest.importorskip("av")
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.mp4")
             _write_synthetic_video(path)
 
-            provider = VideoFrameProvider(path)
-            assert provider._cap is not None
+            provider = VideoFrameProvider(path, backend=backend)
+            handle = "_cap" if backend == "cv2" else "_container"
+            assert getattr(provider, handle) is not None
             provider.cleanup()
-            assert provider._cap is None
+            assert getattr(provider, handle) is None
 
-    def test_video_provider_releases_on_generator_close(self):
+    @pytest.mark.parametrize("backend", ["cv2", "av"])
+    def test_video_provider_releases_on_generator_close(self, backend):
+        if backend == "av":
+            pytest.importorskip("av")
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "test.mp4")
             _write_synthetic_video(path)
 
-            provider = VideoFrameProvider(path)
+            provider = VideoFrameProvider(path, backend=backend)
+            handle = "_cap" if backend == "cv2" else "_container"
             gen = provider.get_frames()
             next(gen)
             gen.close()
-            assert provider._cap is None
+            assert getattr(provider, handle) is None
 
     def test_video_provider_invalid_source_raises(self):
         with pytest.raises((IOError, OSError)):

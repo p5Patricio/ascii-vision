@@ -1,11 +1,11 @@
 import time
-import numpy as np
-import pytest
-from ascii_vision.glyph_cache import GlyphCache
-from ascii_vision.engine import ConversionEngine
-from ascii_vision.metrics import compute_mse, compute_ssim
 
-TEST_FONT_PATH = "assets/fonts/JetBrainsMono-Regular.ttf"
+import numpy as np
+
+from ascii_vision.metrics import compute_mse, compute_ssim
+from ascii_vision.resources import default_font_path
+
+TEST_FONT_PATH = default_font_path()
 
 def test_benchmark_mse_vs_ssim(capsys=None):
     """

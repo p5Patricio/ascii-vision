@@ -1,6 +1,5 @@
 """Tests for ConfigManager: schema enforcement and profile CRUD."""
 
-import json
 import tempfile
 from pathlib import Path
 

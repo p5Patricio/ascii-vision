@@ -1,10 +1,10 @@
 import glob as _glob
 import os
-from typing import Generator, Union
+from collections.abc import Generator
+
 import cv2
 import numpy as np
-from PIL import Image
-
+from PIL import Image, ImageOps
 
 # Maximum media file size: 500 MB
 _MAX_MEDIA_SIZE = 500 * 1024 * 1024
@@ -81,7 +81,7 @@ class FrameProvider:
     """
     Abstract base class for retrieving frames iteratively.
     """
-    def get_frames(self) -> Generator[np.ndarray, None, None]:
+    def get_frames(self) -> Generator[np.ndarray]:
         """
         Yields frames sequentially.
         """
@@ -99,14 +99,12 @@ class FrameProvider:
         Releases any native capture resources held by the provider.
         Safe to call multiple times; subclasses may override.
         """
-        pass
 
     def stop(self) -> None:
         """
         Signals a live provider to stop yielding frames and release resources.
         Safe to call multiple times; subclasses may override.
         """
-        pass
 
     def __enter__(self):
         """
@@ -127,10 +125,12 @@ class StaticImageFrameProvider(FrameProvider):
     FrameProvider implementation for loading a single static image using Pillow.
     Yields exactly one frame and terminates.
     """
-    def __init__(self, image_source: Union[str, Image.Image]):
+    def __init__(self, image_source: str | os.PathLike | Image.Image):
         """
         Initializes the provider with a file path or a PIL Image instance.
         """
+        if isinstance(image_source, os.PathLike):
+            image_source = os.fspath(image_source)
         if not isinstance(image_source, (str, Image.Image)):
             raise TypeError("image_source must be a file path (str) or PIL.Image.Image instance")
         # Validate file-based sources upfront before delegating to PIL
@@ -147,8 +147,9 @@ class StaticImageFrameProvider(FrameProvider):
             if not os.path.exists(self.image_source):
                 raise FileNotFoundError(f"Image path not found: {self.image_source}")
             with Image.open(self.image_source) as img:
-                # Convert to RGB to ensure a consistent 3D NumPy array shape
-                img_rgb = img.convert("RGB")
+                # Honour the EXIF orientation tag (phone photos are stored sideways),
+                # then convert to RGB to ensure a consistent 3D NumPy array shape
+                img_rgb = ImageOps.exif_transpose(img).convert("RGB")
                 self._frame = np.array(img_rgb)
         elif isinstance(self.image_source, Image.Image):
             img_rgb = self.image_source.convert("RGB")
@@ -158,7 +159,7 @@ class StaticImageFrameProvider(FrameProvider):
 
         return self._frame
 
-    def get_frames(self) -> Generator[np.ndarray, None, None]:
+    def get_frames(self) -> Generator[np.ndarray]:
         """
         Yields exactly 1 frame of the loaded image and terminates.
         """
@@ -186,7 +187,7 @@ class VideoFrameProvider(FrameProvider):
     otherwise falls back to ``cv2.VideoCapture``. The fallback keeps the
     core package usable without FFmpeg/PyAV native libraries.
     """
-    def __init__(self, source: Union[str, os.PathLike], backend: str = "auto"):
+    def __init__(self, source: str | os.PathLike, backend: str = "auto"):
         """
         Initializes the provider with a video file path.
 
@@ -209,7 +210,7 @@ class VideoFrameProvider(FrameProvider):
         """
         if backend == "av":
             try:
-                import av  # noqa: F401
+                import av
             except Exception as exc:
                 raise RuntimeError(
                     "PyAV backend requested but 'av' is not installed. "
@@ -236,7 +237,7 @@ class VideoFrameProvider(FrameProvider):
         self._cap = cv2.VideoCapture(str(self._source))
         if not self._cap.isOpened():
             self._cap = None
-            raise IOError(f"Could not open video source with OpenCV: {self._source}")
+            raise OSError(f"Could not open video source with OpenCV: {self._source}")
 
     def _init_av(self) -> None:
         """
@@ -247,13 +248,13 @@ class VideoFrameProvider(FrameProvider):
             self._container = av.open(str(self._source))
         except Exception as exc:
             self._container = None
-            raise IOError(f"Could not open video source with PyAV: {self._source}") from exc
+            raise OSError(f"Could not open video source with PyAV: {self._source}") from exc
 
         video_streams = [s for s in self._container.streams if s.type == "video"]
         if not video_streams:
             self._container.close()
             self._container = None
-            raise IOError(f"No video stream found in {self._source}")
+            raise OSError(f"No video stream found in {self._source}")
         self._stream = video_streams[0]
 
     @property
@@ -269,7 +270,20 @@ class VideoFrameProvider(FrameProvider):
             return max(0, int(frames)) if frames is not None else 0
         return 0
 
-    def get_frames(self) -> Generator[np.ndarray, None, None]:
+    @property
+    def fps(self) -> float:
+        """
+        Frame rate reported by the source, or 0.0 when it cannot be determined.
+        """
+        rate = 0.0
+        if self._backend == "cv2" and self._cap is not None:
+            rate = float(self._cap.get(cv2.CAP_PROP_FPS) or 0.0)
+        elif self._backend == "av" and self._stream is not None:
+            average = getattr(self._stream, "average_rate", None)
+            rate = float(average) if average else 0.0
+        return rate if 0.0 < rate < 1000.0 else 0.0
+
+    def get_frames(self) -> Generator[np.ndarray]:
         """
         Yields every video frame as an RGB NumPy array.
         """
@@ -281,14 +295,14 @@ class VideoFrameProvider(FrameProvider):
         finally:
             self.cleanup()
 
-    def _get_frames_cv2(self) -> Generator[np.ndarray, None, None]:
+    def _get_frames_cv2(self) -> Generator[np.ndarray]:
         while self._cap is not None:
             ret, frame = self._cap.read()
             if not ret:
                 break
             yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    def _get_frames_av(self) -> Generator[np.ndarray, None, None]:
+    def _get_frames_av(self) -> Generator[np.ndarray]:
         for packet in self._container.demux(self._stream):
             for frame in packet.decode():
                 yield frame.to_ndarray(format="rgb24")
@@ -319,7 +333,7 @@ class WebcamFrameProvider(FrameProvider):
     Supports optional frame skipping via *skip_interval* and a *target_fps* hint
     for adaptive quality consumers downstream.
     """
-    def __init__(self, device_index: int = 0, *, skip_interval: int = 0, target_fps: Optional[int] = None):
+    def __init__(self, device_index: int = 0, *, skip_interval: int = 0, target_fps: int | None = None):
         """
         Initializes the provider with a camera device index.
 
@@ -340,7 +354,7 @@ class WebcamFrameProvider(FrameProvider):
         self._stopped = False
         if not self._cap.isOpened():
             self._cap = None
-            raise IOError(f"Could not open camera device {device_index}")
+            raise OSError(f"Could not open camera device {device_index}")
 
     @property
     def total_frames(self) -> int:
@@ -349,7 +363,7 @@ class WebcamFrameProvider(FrameProvider):
         """
         return 0
 
-    def get_frames(self) -> Generator[np.ndarray, None, None]:
+    def get_frames(self) -> Generator[np.ndarray]:
         """
         Yields live camera frames as RGB NumPy arrays until stopped.
 

@@ -1,24 +1,26 @@
 import os
 import tempfile
-import warnings
+
 import numpy as np
 import pytest
 from PIL import Image
 
+from ascii_vision.config import ConfigManager
+from ascii_vision.engine import ConversionEngine
+from ascii_vision.exporter import to_clipboard, to_html, to_png, to_svg, to_txt
 from ascii_vision.frame_provider import StaticImageFrameProvider
 from ascii_vision.glyph_cache import GlyphCache
 from ascii_vision.metrics import (
     brightness_mapping,
     brightness_mapping_vectorized,
     compute_mse,
-    compute_ssim
+    compute_ssim,
 )
-from ascii_vision.exporter import to_txt, to_html, to_svg, to_png, to_clipboard
-from ascii_vision.config import ConfigManager
-from ascii_vision.engine import ConversionEngine
 
 # Path to the bundled font for testing
-TEST_FONT_PATH = "assets/fonts/JetBrainsMono-Regular.ttf"
+from ascii_vision.resources import default_font_path
+
+TEST_FONT_PATH = default_font_path()
 
 # =====================================================================
 # 1. Frame Provider Tests

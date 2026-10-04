@@ -1,8 +1,8 @@
 """ASCII-to-QPixmap rendering utilities for colored preview."""
 
 import numpy as np
-from PySide6.QtCore import QSize, QRectF, Qt
-from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
+from PySide6.QtCore import QRectF, QSize, Qt
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QPixmap
 
 
 class AsciiToPixmap:
@@ -38,12 +38,21 @@ class AsciiToPixmap:
             pixmap.fill(QColor("#151515"))
 
         painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.TextAntialiasing, True)
         cell_w = size.width() / cols
         cell_h = size.height() / rows
 
+        # Lay glyphs out on a reference grid (one natural character cell) and scale
+        # that grid onto the pixmap. The conversion engine squeezes each glyph into
+        # its cell the same way, so the preview matches what was matched and glyphs
+        # neither overlap nor spill out of their cells.
         font = QFont(self.font_family)
-        font.setPixelSize(max(1, int(cell_h)))
+        font.setPixelSize(32)
         painter.setFont(font)
+        metrics = QFontMetricsF(font)
+        ref_w = max(1.0, metrics.horizontalAdvance("M"))
+        ref_h = max(1.0, metrics.height())
+        painter.scale(cell_w / ref_w, cell_h / ref_h)
 
         default_pen = QColor("#d4d4d4")
         if metric == "SSIM":
@@ -69,7 +78,7 @@ class AsciiToPixmap:
                 else:
                     painter.setPen(default_pen)
 
-                rect = QRectF(c * cell_w, r * cell_h, cell_w, cell_h)
+                rect = QRectF(c * ref_w, r * ref_h, ref_w, ref_h)
                 painter.drawText(rect, Qt.AlignCenter, char)
 
         painter.end()

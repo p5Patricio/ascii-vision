@@ -2,10 +2,30 @@ import html
 import logging
 import os
 import platform
+
 import numpy as np
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
+
+# Keeps a fallback Qt application alive when to_clipboard() has to create one.
+_fallback_qt_app = None
+
+def font_cell_metrics(font_path: str, font_size: int) -> tuple[float, float]:
+    """
+    Returns ``(advance_em, line_height_em)`` for a font: the width of one character
+    cell and the height of one text line, both as a fraction of the font size.
+
+    Used so HTML and SVG exports lay characters out on the same cell grid as the
+    PNG exporter and the conversion engine (otherwise the picture is stretched).
+    """
+    font = ImageFont.truetype(font_path, font_size)
+    ascent, descent = font.getmetrics()
+    advance = int(font.getlength("M"))
+    if advance <= 0 or ascent + descent <= 0:
+        return 0.6, 1.0
+    return advance / font_size, (ascent + descent) / font_size
+
 
 def _quantize_color(rgb: np.ndarray) -> tuple:
     """
@@ -117,10 +137,13 @@ def to_html(
     font_name: str,
     font_size: int,
     color_matrix: np.ndarray = None,
-    bg_color: str = "Black"
+    bg_color: str = "Black",
+    line_height: float = 1.0,
 ) -> str:
     """
     Formats the character matrix into a self-contained, CSS-styled HTML page.
+
+    *line_height* is the CSS line height as a multiple of the font size.
     """
     if char_matrix.ndim != 2:
         raise ValueError("char_matrix must be a 2D numpy array")
@@ -144,6 +167,7 @@ def to_html(
             html_lines.append("".join(row_spans))
         escaped_content = "\n".join(html_lines)
     
+    safe_font_name = html.escape(str(font_name), quote=True).replace("\\", "")
     html_template = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -160,9 +184,9 @@ def to_html(
     align-items: center;
   }}
   pre {{
-    font-family: "{font_name}", "Courier New", monospace;
+    font-family: "{safe_font_name}", "Courier New", monospace;
     font-size: {font_size}px;
-    line-height: 1.0;
+    line-height: {line_height:.4f};
     letter-spacing: 0px;
     white-space: pre;
     margin: 0;
@@ -184,17 +208,21 @@ def to_svg(
     font_size: int,
     char_aspect_ratio: float = 0.6,
     color_matrix: np.ndarray = None,
-    bg_color: str = "Black"
+    bg_color: str = "Black",
+    line_height: float = 1.0,
 ) -> str:
     """
     Renders the character matrix into a vector SVG document containing <text> lines.
+
+    *char_aspect_ratio* is the character advance width as a multiple of the font
+    size and *line_height* the row pitch as a multiple of the font size.
     """
     if char_matrix.ndim != 2:
         raise ValueError("char_matrix must be a 2D numpy array")
         
     rows, cols = char_matrix.shape
     char_width = char_aspect_ratio * font_size
-    char_height = font_size
+    char_height = font_size * line_height
 
     svg_width = cols * char_width
     svg_height = rows * char_height
@@ -206,7 +234,7 @@ def to_svg(
     lines = []
     lines.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}">')
     lines.append(f'  <rect width="100%" height="100%" fill="{bg_fill}"/>')
-    lines.append(f'  <g font-family="{font_name}" font-size="{font_size}" fill="{text_fill}" xml:space="preserve">')
+    lines.append(f'  <g font-family="{html.escape(str(font_name), quote=True)}" font-size="{font_size}" fill="{text_fill}" xml:space="preserve">')
 
     span_gen = _rle_color_spans(char_matrix, color_matrix) if color_matrix is not None else None
     for i in range(rows):
@@ -378,11 +406,14 @@ def to_clipboard(char_matrix: np.ndarray, color_matrix: np.ndarray = None) -> bo
 
     # 2. PySide6 Fallback
     try:
+        global _fallback_qt_app
         from PySide6.QtGui import QGuiApplication
-        app = QGuiApplication.instance()
-        if app is None:
-            # Create a temporary headless instance if not already running
-            app = QGuiApplication([])
+        from PySide6.QtWidgets import QApplication
+        if QGuiApplication.instance() is None:
+            # No Qt app running (e.g. CLI use). Create a QApplication (not a bare
+            # QGuiApplication, which would break any widget created later) and keep
+            # a module-level reference so it is not destroyed when this call returns.
+            _fallback_qt_app = QApplication([])
         clipboard = QGuiApplication.clipboard()
         clipboard.setText(text)
         return True
@@ -402,6 +433,16 @@ class ExportManager:
     """
 
     SUPPORTED_FORMATS = {"txt", "html", "svg", "png", "clipboard"}
+
+    @staticmethod
+    def _cell_metrics(font_path: str | None, font_size: int) -> tuple[float, float]:
+        """Character cell metrics for HTML/SVG; legacy defaults when no font file is known."""
+        if font_path and os.path.exists(font_path):
+            try:
+                return font_cell_metrics(font_path, font_size)
+            except OSError:
+                pass
+        return 0.6, 1.0
 
     def _resolve_format(self, output_path: str | None, format: str | None) -> str:
         """
@@ -474,11 +515,14 @@ class ExportManager:
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(content)
             elif fmt == "html":
-                content = to_html(char_matrix, font_name, font_size, color_matrix, bg_color)
+                _, line_h = self._cell_metrics(font_path, font_size)
+                content = to_html(char_matrix, font_name, font_size, color_matrix, bg_color, line_height=line_h)
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(content)
             elif fmt == "svg":
-                content = to_svg(char_matrix, font_name, font_size, color_matrix=color_matrix, bg_color=bg_color)
+                advance, line_h = self._cell_metrics(font_path, font_size)
+                content = to_svg(char_matrix, font_name, font_size, char_aspect_ratio=advance,
+                                 color_matrix=color_matrix, bg_color=bg_color, line_height=line_h)
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(content)
             elif fmt == "png":
@@ -486,7 +530,7 @@ class ExportManager:
                     raise ValueError("font_path is required for PNG export")
                 img = to_png(char_matrix, font_path, font_size, color_matrix, bg_color)
                 img.save(output_path)
-        except Exception as exc:
+        except Exception:
             # Remove any partial file if one was created.
             if os.path.exists(output_path):
                 try:

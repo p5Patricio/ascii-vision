@@ -8,13 +8,11 @@ from PySide6.QtCore import Qt
 
 
 @pytest.fixture
-def main_window():
+def main_window(qapp):
     sys.path.insert(0, "src")
     try:
-        from PySide6.QtWidgets import QApplication
         from ascii_vision_gui.main_window import MainWindow
 
-        app = QApplication.instance() or QApplication([])
         window = MainWindow()
         yield window
         window.close()
