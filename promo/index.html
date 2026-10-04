@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>ASCII Vision — Promo</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<style>
+@font-face{font-family:'JB';src:url(../src/ascii_vision/assets/fonts/JetBrainsMono-Regular.ttf)}
+@font-face{font-family:'DJV';src:url(../src/ascii_vision/assets/fonts/DejaVuSans.ttf)}
+:root{--bg:#04091a;--cy:#19e0ff;--gr:#35e07a;--bl:#1f5cff;--tx:#eaf2ff;--mut:#7d8db3;--line:rgba(120,160,255,.14)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;background:#000;overflow:hidden}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif}
+#glow{position:absolute;inset:0}
+#grid{position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:60px 60px;opacity:.55;-webkit-mask-image:radial-gradient(ellipse at 50% 42%,#000 20%,transparent 75%)}
+#rain{position:absolute;inset:0}
+#vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(0,0,10,.75) 100%)}
+.mono{font-family:'Space Mono',monospace}
+#top{position:absolute;left:60px;right:60px;top:58px;display:flex;justify-content:space-between;align-items:center;font:700 19px 'Space Mono';letter-spacing:.14em;color:#8aa0cc;text-transform:uppercase}
+#top .l{display:flex;gap:10px;align-items:center}#top .dot{width:9px;height:9px;border-radius:50%;background:var(--cy);box-shadow:0 0 12px var(--cy)}
+#top .r{display:flex;gap:10px;align-items:center}
+.scene{position:absolute;inset:0;opacity:0;will-change:opacity}
+h1.hl{position:absolute;left:0;right:0;top:190px;text-align:center;font:800 84px/1.08 'Syne';letter-spacing:-.02em;white-space:nowrap}
+h1.hl .w{display:inline-block;will-change:transform,opacity,filter}
+h1.hl em{font-style:normal;color:var(--cy)} h1.hl em.g{color:var(--gr)} h1.hl em.b{color:#5b8dff}
+.kicker{position:absolute;left:0;right:0;top:128px;text-align:center;font:700 19px 'Space Mono';letter-spacing:.2em;color:var(--cy);text-transform:uppercase}
+.card{position:absolute;border-radius:26px;background:#0a1226;border:1px solid rgba(140,180,255,.16);box-shadow:0 40px 120px rgba(0,0,0,.55),0 0 80px rgba(25,224,255,.07);overflow:hidden}
+.chip{position:absolute;padding:14px 26px;border-radius:999px;font:700 22px 'Space Mono';letter-spacing:.06em;background:rgba(20,40,90,.55);border:1px solid rgba(140,180,255,.25);color:#b9c8ee;white-space:nowrap;will-change:transform,opacity}
+.chip.on{background:rgba(25,224,255,.16);border-color:var(--cy);color:#fff;box-shadow:0 0 30px rgba(25,224,255,.35)}
+.btn{display:inline-block;padding:14px 22px;border-radius:8px;background:#0e639c;color:#fff;font:700 22px 'Inter';margin-right:12px}
+canvas{display:block}
+#prog{position:absolute;left:60px;right:60px;bottom:58px;display:flex;gap:8px}
+#prog i{flex:1;height:4px;border-radius:2px;background:rgba(140,170,255,.18);overflow:hidden;display:block}
+#prog b{display:block;height:100%;width:0;background:var(--cy)}
+/* app mock */
+.win{background:#1e1e1e;color:#d4d4d4;font-family:'Inter',sans-serif}
+.win .bar{height:56px;background:#2a2a2c;display:flex;align-items:center;padding:0 22px;gap:10px;font:600 20px 'Inter';color:#9a9a9a}
+.win .bar i{width:15px;height:15px;border-radius:50%;display:block}
+.drop{border:3px dashed #3c3c3c;border-radius:10px;background:#1e1e1e;color:#858585;font:500 24px/1.4 'Inter';text-align:center}
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="glow" width="270" height="480"></canvas>
+  <div id="grid"></div>
+  <canvas id="rain" width="1080" height="1920"></canvas>
+  <div id="vig"></div>
+
+  <div id="top"><div class="l"><span class="dot"></span><span>// ASCII VISION</span></div>
+    <div class="r"><span>SYMMETRICAL CODE</span>
+      <svg width="26" height="30" viewBox="0 0 280 322"><use href="#logo"/></svg></div></div>
+
+  <!-- S0 hook -->
+  <section class="scene" id="s0">
+    <h1 class="hl" data-t="Tus imágenes,<br>en {arte ASCII.}"></h1>
+    <div class="card" id="s0card" style="left:90px;top:640px;width:900px;height:675px"><canvas id="s0cv" width="900" height="675"></canvas></div>
+    <div class="chip" id="s0c1" style="left:90px;top:1380px">foto.jpg</div>
+    <div class="chip on" id="s0c2" style="left:300px;top:1380px">→ arte ASCII</div>
+    <div class="chip" id="s0c3" style="left:566px;top:1380px">TXT · HTML · SVG · PNG</div>
+  </section>
+
+  <!-- S1 drag, drop, compare -->
+  <section class="scene" id="s1">
+    <h1 class="hl" data-t="Arrastra.<br>Suelta.<br>{Compara.}"></h1>
+    <div class="card win" id="s1win" style="left:60px;top:520px;width:960px;height:1020px">
+      <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span style="margin-left:14px">ASCII Vision</span></div>
+      <div class="drop" id="s1drop" style="position:absolute;left:30px;top:86px;width:900px;height:120px;padding-top:26px">Drag &amp; Drop Image Here<br>or Click to Browse</div>
+      <div id="s1prev" style="position:absolute;left:30px;top:226px;width:900px;height:675px;border-radius:8px;overflow:hidden;background:#151515"><canvas id="s1cv" width="900" height="675"></canvas>
+        <div id="s1h" style="position:absolute;top:0;bottom:0;width:3px;background:#007acc"><span style="position:absolute;left:-12px;top:50%;margin-top:-14px;width:27px;height:27px;border-radius:50%;background:#007acc;box-shadow:0 0 18px #007acc"></span></div></div>
+      <div id="s1tb" style="position:absolute;left:30px;top:930px;width:900px"><span class="btn">Save TXT</span><span class="btn">Save HTML</span><span class="btn">Save SVG</span><span class="btn">Save PNG</span></div>
+    </div>
+    <div id="s1file" class="chip on" style="left:700px;top:300px;font-size:26px">🖼 paisaje.jpg</div>
+  </section>
+
+  <!-- S2 presets -->
+  <section class="scene" id="s2">
+    <h1 class="hl" data-t="Elige tu<br>{calidad.}"></h1>
+    <div id="s2tiles"></div>
+  </section>
+
+  <!-- S3 charsets -->
+  <section class="scene" id="s3">
+    <h1 class="hl" data-t="Tu juego de<br>{caracteres.}"></h1>
+    <div class="card" style="left:60px;top:520px;width:960px;height:720px"><canvas id="s3cv" width="960" height="720"></canvas></div>
+    <div id="s3chips"></div>
+  </section>
+
+  <!-- S4 color -->
+  <section class="scene" id="s4">
+    <h1 class="hl" data-t="Color real,<br>{24 bits.}"></h1>
+    <div class="card" id="s4card" style="left:60px;top:520px;width:960px;height:720px"><canvas id="s4cv" width="960" height="720"></canvas></div>
+    <div id="s4chips"></div>
+  </section>
+
+  <!-- S5 exports -->
+  <section class="scene" id="s5">
+    <h1 class="hl" data-t="Exporta como<br>{quieras.}"></h1>
+    <div id="s5list"></div>
+  </section>
+
+  <!-- S6 video -->
+  <section class="scene" id="s6">
+    <h1 class="hl" data-t="Video, con<br>{audio.}"></h1>
+    <div class="card" style="left:90px;top:520px;width:900px;height:760px;background:#02050f"><canvas id="s6cv" width="900" height="760"></canvas>
+      <div style="position:absolute;left:24px;top:22px;padding:8px 16px;border-radius:8px;background:rgba(25,224,255,.16);border:1px solid var(--cy);font:700 18px 'Space Mono';color:#fff">ASCII · H.264</div>
+      <div id="s6pip" style="position:absolute;right:22px;bottom:22px;width:210px;height:210px;border-radius:14px;border:2px solid rgba(255,255,255,.35);background:#000 url(assets/donut_strip.jpg) 0 0/2100px 210px;box-shadow:0 10px 40px #000"><span style="position:absolute;left:8px;top:6px;font:700 14px 'Space Mono';color:#fff">ORIGINAL</span></div>
+    </div>
+    <div class="card" style="left:90px;top:1310px;width:900px;height:150px"><canvas id="s6wave" width="900" height="150"></canvas>
+      <div id="s6time" style="position:absolute;right:20px;top:10px;font:700 18px 'Space Mono';color:#9fb4e8">00:00 / 00:30</div></div>
+    <div id="s6chips"></div>
+  </section>
+
+  <!-- S7 webcam -->
+  <section class="scene" id="s7">
+    <h1 class="hl" data-t="Webcam en<br>{vivo.}"></h1>
+    <div class="card" style="left:90px;top:520px;width:900px;height:675px;background:#02050f"><canvas id="s7cv" width="900" height="675"></canvas>
+      <div style="position:absolute;left:24px;top:22px;display:flex;gap:12px;align-items:center;font:700 20px 'Space Mono';color:#fff"><span id="s7rec" style="width:16px;height:16px;border-radius:50%;background:#ff4d4d;display:block"></span>LIVE</div>
+      <div id="s7fps" style="position:absolute;right:24px;top:18px;font:700 34px 'Space Mono';color:var(--gr)">30 FPS</div></div>
+    <div class="card" style="left:90px;top:1225px;width:900px;height:170px;padding:26px 34px">
+      <div style="display:flex;justify-content:space-between;font:700 22px 'Space Mono';color:#b9c8ee"><span>CALIDAD ADAPTATIVA</span><span id="s7cols">56 cols · MSE</span></div>
+      <div style="margin-top:22px;height:22px;border-radius:11px;background:rgba(140,170,255,.15);overflow:hidden"><div id="s7bar" style="height:100%;width:100%;border-radius:11px;background:linear-gradient(90deg,var(--bl),var(--cy))"></div></div>
+      <div style="margin-top:14px;font:500 20px 'Inter';color:var(--mut)">Ajusta columnas y métrica para sostener los FPS objetivo.</div></div>
+  </section>
+
+  <!-- S8 terminal -->
+  <section class="scene" id="s8">
+    <h1 class="hl" data-t="En tu<br>{terminal.}"></h1>
+    <div class="card" id="s8term" style="left:60px;top:520px;width:960px;height:900px;background:#070d1d">
+      <div class="win" style="background:#0d1730"><div class="bar" style="background:#0d1730"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="mono" style="margin-left:14px;font-size:18px">ascii-vision — zsh</span></div></div>
+      <pre id="s8pre" style="padding:30px 36px;font:500 24px/1.62 'JB','DJV',monospace;color:#d6e2ff;white-space:pre-wrap"></pre>
+      <canvas id="s8cv" width="693" height="520" style="position:absolute;left:133px;top:350px;border-radius:14px;background:#05070f;border:1px solid rgba(140,180,255,.18)"></canvas>
+      <div id="s8lab" style="position:absolute;left:133px;top:350px;margin:12px;padding:6px 14px;border-radius:8px;background:rgba(0,0,0,.6);font:700 16px 'Space Mono';color:#9fb4e8">arte.png</div></div>
+  </section>
+
+  <!-- S9 installer -->
+  <section class="scene" id="s9">
+    <h1 class="hl" data-t="Instálalo en<br>{un clic.}"></h1>
+    <div class="card" id="s9dlg" style="left:110px;top:560px;width:860px;height:560px;background:#f3f5f9;border-radius:14px">
+      <div style="height:54px;background:#fff;border-bottom:1px solid #d9dde6;display:flex;align-items:center;padding:0 20px;font:600 20px 'Inter';color:#1a2233;gap:12px"><span style="width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#19e0ff,#1f5cff);display:block"></span>Instalación de ASCII Vision</div>
+      <div style="padding:44px 52px;color:#1a2233">
+        <div style="font:700 34px 'Inter'" id="s9t">Instalando…</div>
+        <div style="margin-top:12px;font:500 22px 'Inter';color:#55607a" id="s9s">Copiando archivos…</div>
+        <div style="margin-top:46px;height:34px;border-radius:7px;background:#dfe4ef;overflow:hidden;border:1px solid #c9d0df"><div id="s9bar" style="height:100%;width:0;background:linear-gradient(90deg,#1f5cff,#19e0ff)"></div></div>
+        <div style="margin-top:12px;font:600 20px 'Space Mono';color:#55607a" id="s9p">0 %</div>
+        <div style="position:absolute;right:44px;bottom:36px"><span class="btn" id="s9btn" style="background:#1f5cff;font-size:24px;padding:16px 38px;opacity:.35">Finalizar</span></div></div></div>
+    <div id="s9ico" style="position:absolute;left:440px;top:1170px;width:200px;text-align:center;font:600 22px 'Inter';color:#dfe8ff">
+      <div style="width:150px;height:150px;margin:0 auto 12px;border-radius:30px;background:#0a1226;border:2px solid rgba(25,224,255,.5);box-shadow:0 0 50px rgba(25,224,255,.45);display:flex;align-items:center;justify-content:center;font:800 56px 'JB';color:var(--cy)">▒@░</div>ASCII Vision</div>
+    <div id="s9chips"></div>
+  </section>
+
+  <!-- S10 end -->
+  <section class="scene" id="s10">
+    <div id="endglow" style="position:absolute;left:140px;top:420px;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(31,92,255,.55),rgba(31,92,255,.12) 45%,transparent 70%)"></div>
+    <svg id="endlogo" style="position:absolute;left:390px;top:560px" width="300" height="344" viewBox="0 0 280 322"><use href="#logo"/></svg>
+    <div id="endby" class="mono" style="position:absolute;left:0;right:0;top:980px;text-align:center;font:700 22px 'Space Mono';letter-spacing:.34em;color:#8aa0cc">DESARROLLADO POR</div>
+    <div id="endname" style="position:absolute;left:0;right:0;top:1030px;text-align:center;font:800 60px 'Syne';letter-spacing:-.02em;white-space:nowrap">Symmetrical<span style="color:var(--bl)">Code</span></div>
+    <div id="endtag" style="position:absolute;left:0;right:0;top:1150px;text-align:center;font:500 30px 'Inter';color:#b3c0de">Software empresarial a la medida</div>
+  </section>
+
+  <div id="prog"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="gc" gradientUnits="userSpaceOnUse" x1="60" y1="20" x2="250" y2="210"><stop offset="0" stop-color="#00e0e0"/><stop offset="1" stop-color="#0090c2"/></linearGradient>
+    <linearGradient id="gb" gradientUnits="userSpaceOnUse" x1="60" y1="20" x2="250" y2="210"><stop offset="0" stop-color="#1a8bff"/><stop offset="1" stop-color="#0047d8"/></linearGradient>
+    <g id="piece"><path d="M140 17L251 81Q259 86 259 95L259 123Q259 134 249 128L140 64L70 104Q62 109 62 117L62 127L132 168Q140 173 140 182L140 207Q140 219 129 213L34 158Q21 151 21 140L21 100Q21 89 31 83Z"/>
+      <path d="M140 64L178 41L251 81Q259 86 259 95L259 123Q259 134 249 128Z" fill="#00405f" fill-opacity=".16"/></g>
+    <g id="logo"><use href="#piece" fill="url(#gc)"/><use href="#piece" fill="url(#gb)" transform="rotate(180 140 161.5)"/></g>
+  </defs>
+</svg>
+<script src="assets/data.js"></script>
+<script src="scenes.js"></script>
+</body></html>
