@@ -14,8 +14,10 @@ the Windows installer. It follows the **Symmetrical Code design system** (`DESIG
   focus trap, Escape to close), CSS-only grid + glow backdrop, no continuous animation, `prefers-reduced-motion` honoured.
 * **Voice** — Spanish (MX, "tú") with a full English mirror (toggle in the navbar, persisted in `localStorage['sc-lang']`).
 * **The tool's touch** — a single terminal-green accent (`--svc-accent`, the same override mechanism the Symmetrical Code
-  service pages use) and a before/after comparer built from the app's own output (`assets/compare-*.webp`, generated
-  with `ascii-vision --preset "High Quality" --columns 150 --color`).
+  service pages use) and a before/after comparer built from the app's own output. `assets/compare-original.webp` is a procedurally
+  ray-traced scene and `assets/compare-ascii.webp` is its conversion with
+  `ascii-vision --preset "High Quality" --columns 190 --color`; regenerate both with `python promo/gen_compare.py`
+  (no third-party photos).
 * Contrast: text uses `--muted` rather than `--subtle` (3.6:1 dark / 2.9:1 light) and code flags use the brand blue on the
   light theme (the light cyan is 3.7:1), so every text colour clears the 4.5:1 floor the design system asks for.
 
@@ -26,7 +28,9 @@ the Windows installer. It follows the **Symmetrical Code design system** (`DESIG
   the Releases page.
 * **Preview locally**: `python -m http.server -d site 8000` and open <http://localhost:8000> (the CSP needs http, not `file://`).
 * **Publish**: the `Landing page` workflow deploys `site/` to GitHub Pages when you run it by hand (Actions tab ->
-  Run workflow). Enable Pages once under *Settings -> Pages -> Source: GitHub Actions*. If you serve it from another
-  URL, update `canonical` and `og:image` in `index.html`.
-* **Assets**: `app-screenshot.png` is a real capture of the GUI, `promo.mp4`/`promo-poster.jpg` come from the promo
+  Run workflow). Enable Pages once under *Settings -> Pages -> Source: GitHub Actions*. The site is served from
+  <https://ascii.symmetricalcode.com/> (custom domain set in Pages settings; DNS is a `CNAME ascii -> p5patricio.github.io`
+  record in the symmetricalcode.com zone). If you serve it from another URL, update `canonical` and `og:image` in `index.html`.
+* **Assets**: `app-screenshot.png` is a real capture of the GUI (`python promo/capture_gui.py`, which converts the comparer
+  scene in the app itself), `og.jpg` is the social card with that capture composited into its window area, `promo.mp4`/`promo-poster.jpg` come from the promo
   video (see `../promo`), `favicon.svg` is the Symmetrical Code mark. Syne, Geist and Geist Mono are SIL OFL.
