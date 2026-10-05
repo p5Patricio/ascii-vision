@@ -1,6 +1,7 @@
 import logging
 import os
-from typing import Iterable, Optional
+from collections.abc import Iterable
+
 import cv2
 import numpy as np
 from PIL import Image
@@ -20,7 +21,7 @@ class VideoExporter:
     SUPPORTED_FORMATS = {"mp4", "gif"}
     DEFAULT_FPS = 30
 
-    def _resolve_codec(self, ext: str, codec: Optional[str]) -> Optional[int]:
+    def _resolve_codec(self, ext: str, codec: str | None) -> int | None:
         """
         Returns the OpenCV fourcc code for MP4, or None for GIF.
         """
@@ -39,9 +40,9 @@ class VideoExporter:
         frames: Iterable[np.ndarray],
         output_path: str,
         fps: int = DEFAULT_FPS,
-        dimensions: Optional[tuple[int, int]] = None,
-        codec: Optional[str] = None,
-        source_audio: Optional[str] = None,
+        dimensions: tuple[int, int] | None = None,
+        codec: str | None = None,
+        source_audio: str | None = None,
     ) -> None:
         """
         Writes a sequence of frames to a video file.
@@ -103,13 +104,13 @@ class VideoExporter:
         output_path: str,
         fps: int,
         dimensions: tuple[int, int],
-        codec: Optional[str],
-        source_audio: Optional[str] = None,
+        codec: str | None,
+        source_audio: str | None = None,
     ) -> None:
         # When source audio is provided, use the PyAV pipeline for audio passthrough
         if source_audio is not None:
             try:
-                import av  # type: ignore[import-untyped]  # noqa: F811
+                import av  # noqa: F401  (availability check)
                 self._write_mp4_with_av(
                     first_frame, frames_iter, output_path, fps, dimensions, codec, source_audio,
                 )
@@ -132,6 +133,9 @@ class VideoExporter:
         finally:
             writer.release()
 
+    # Audio codecs that can be stream-copied into an MP4 container as they are.
+    _MP4_COPYABLE_AUDIO = {"aac", "mp3", "ac3", "eac3", "alac"}
+
     def _write_mp4_with_av(
         self,
         first_frame: np.ndarray,
@@ -139,35 +143,50 @@ class VideoExporter:
         output_path: str,
         fps: int,
         dimensions: tuple[int, int],
-        codec: Optional[str],
+        codec: str | None,
         source_audio: str,
     ) -> None:
         """
-        Writes MP4 using PyAV with video encoding + audio passthrough.
+        Writes an H.264 MP4 using PyAV, carrying over the audio of *source_audio*.
 
-        Audio is copied from *source_audio* without re-encoding (stream copy).
+        Audio that MP4 can hold (AAC, MP3, ...) is copied without re-encoding;
+        anything else (Opus, Vorbis from WebM/MKV) is transcoded to AAC. A source
+        without an audio track simply yields a video-only file.
         """
+        from fractions import Fraction
+
         import av  # type: ignore[import-untyped]
 
-        output = av.open(output_path, mode="w")
+        # libx264 with yuv420p requires even dimensions.
+        width, height = dimensions[0] - dimensions[0] % 2, dimensions[1] - dimensions[1] % 2
+        dimensions = (max(2, width), max(2, height))
 
-        # -- Video stream configuration -------------------------------------------
-        video_stream = output.add_stream("libx264", rate=fps)
-        video_stream.width = dimensions[0]
-        video_stream.height = dimensions[1]
-        video_stream.pix_fmt = "yuv420p"
-
-        # -- Open source audio container ------------------------------------------
-        src = av.open(source_audio)
-        src_audio_streams = [s for s in src.streams if s.type == "audio"]
-        audio_map: list[tuple[av.stream.Stream, av.stream.Stream]] = []
-
-        for s in src_audio_streams:
-            out_audio = output.add_stream(template=s)
-            audio_map.append((s, out_audio))
-
-        # -- Encode video frames --------------------------------------------------
+        output = av.open(output_path, mode="w", options={"movflags": "+faststart"})
+        src = None
         try:
+            video_stream = output.add_stream("libx264", rate=Fraction(fps).limit_denominator(1000))
+            video_stream.width = dimensions[0]
+            video_stream.height = dimensions[1]
+            video_stream.pix_fmt = "yuv420p"
+            video_stream.options = {"crf": "20", "preset": "medium"}
+
+            src = av.open(source_audio)
+            copy_map = []
+            transcode = []
+            for s in (st for st in src.streams if st.type == "audio"):
+                if s.codec_context.name in self._MP4_COPYABLE_AUDIO:
+                    if hasattr(output, "add_stream_from_template"):  # PyAV >= 14
+                        copied = output.add_stream_from_template(s)
+                    else:
+                        copied = output.add_stream(template=s)
+                    copy_map.append((s, copied))
+                else:
+                    rate = s.codec_context.sample_rate or 44100
+                    out_audio = output.add_stream("aac", rate=rate)
+                    out_audio.layout = "stereo" if (s.codec_context.channels or 2) > 1 else "mono"
+                    resampler = av.AudioResampler(format="fltp", layout=out_audio.layout.name, rate=rate)
+                    transcode.append((s, out_audio, resampler))
+
             for idx, frame in enumerate(self._frame_iter(first_frame, frames_iter)):
                 frame_bgr = self._ensure_bgr(frame, dimensions)
                 frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
@@ -175,20 +194,28 @@ class VideoExporter:
                 av_frame.pts = idx
                 for packet in video_stream.encode(av_frame):
                     output.mux(packet)
-
-            # Flush video encoder
             for packet in video_stream.encode():
                 output.mux(packet)
 
-            # -- Copy audio packets (stream copy, no re-encode) -------------------
-            for src_stream, out_stream in audio_map:
+            for src_stream, out_stream in copy_map:
                 for packet in src.demux(src_stream):
                     if packet.dts is None:
                         continue
                     packet.stream = out_stream
                     output.mux(packet)
+
+            for src_stream, out_stream, resampler in transcode:
+                src.seek(0)
+                for decoded in src.decode(src_stream):
+                    decoded.pts = None
+                    for resampled in resampler.resample(decoded):
+                        for packet in out_stream.encode(resampled):
+                            output.mux(packet)
+                for packet in out_stream.encode():
+                    output.mux(packet)
         finally:
-            src.close()
+            if src is not None:
+                src.close()
             output.close()
 
     def _write_gif(

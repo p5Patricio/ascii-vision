@@ -4,24 +4,19 @@ from unittest.mock import Mock
 import cv2
 import numpy as np
 import pytest
-from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QApplication
 
-from ascii_vision.frame_provider import FrameProvider, StaticImageFrameProvider, VideoFrameProvider, WebcamFrameProvider
+from ascii_vision.frame_provider import FrameProvider, WebcamFrameProvider
 from ascii_vision_gui.worker import ConversionWorker, WebcamWorker
 
 
 @pytest.fixture(scope="session")
-def qt_app():
+def qt_app(qapp):
     """
     Provide a Qt application for the worker's signals and QPixmap rendering.
     QApplication is required for QPixmap and font rendering used by WebcamWorker.
     """
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    yield app
+    yield qapp
 
 
 class MockEngine:

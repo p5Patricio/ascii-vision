@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "PySide6>=6.0.0",
-    "opencv-python>=4.5.0",
+    "opencv-python-headless>=4.5.0",
     "numpy>=1.20.0",
     "pillow>=9.0.0",
     "jsonschema>=4.0.0",
@@ -33,6 +33,17 @@ video = [
 [project.scripts]
 ascii-vision = "ascii_vision.cli:main"
 
+[project.gui-scripts]
+ascii-vision-gui = "ascii_vision_gui.app:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = ["ascii_vision", "ascii_vision_gui"]
+
+[tool.setuptools.package-data]
+ascii_vision = ["config_schema.json", "assets/*.png", "assets/fonts/*"]
+
+[tool.ruff.lint]
+# Real defects only (syntax errors, undefined names, unused imports/variables).
+# Style rules are intentionally off so lint stays a useful signal.
+select = ["E9", "F"]

@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt, Signal, QPoint, QRect, QRectF
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+from PySide6.QtCore import Qt, Signal, QPoint, QRect
+from PySide6.QtGui import QColor, QPainter, QPen
 
 
 class DropZoneWidget(QFrame):

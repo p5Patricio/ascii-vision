@@ -1,10 +1,17 @@
-import os
 import json
+import os
+import re
 import warnings
 from pathlib import Path
 
 import jsonschema
 from platformdirs import user_config_dir
+
+from ascii_vision.resources import (
+    DEFAULT_FONT_NAME,
+    bundled_font_path,
+    default_font_path,
+)
 
 # Supported TrueType / OpenType font extensions.
 VALID_FONT_EXTENSIONS = (".ttf", ".otf")
@@ -71,29 +78,35 @@ class ConfigManager:
                 )
                 font_path = None  # force fallback
 
+        # --- The default font always resolves to the bundled copy, silently -----
+        if font_path and os.path.basename(font_path) == DEFAULT_FONT_NAME and (
+            os.path.normpath(font_path) == os.path.normpath(self.DEFAULT_FONT_RELATIVE_PATH)
+            or not os.path.exists(font_path)
+        ):
+            bundled = bundled_font_path()
+            if bundled:
+                return bundled
+
         # --- If a valid path exists, return it ------------------------------------
         if font_path and os.path.exists(font_path) and os.access(font_path, os.R_OK):
             return font_path
 
         # --- Fallback: bundled JetBrains Mono ------------------------------------
-        package_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(package_dir))
-        bundled_font = os.path.abspath(os.path.join(project_root, "assets", "fonts", "JetBrainsMono-Regular.ttf"))
-
-        if os.path.exists(bundled_font):
+        bundled_font = bundled_font_path()
+        if bundled_font:
             warnings.warn(
                 f"Font path '{font_path}' not found or invalid. Falling back to bundled JetBrains Mono: {bundled_font}",
                 RuntimeWarning
             )
             return bundled_font
 
-        # --- Last-resort fallback: relative to CWD --------------------------------
-        local_fallback = os.path.abspath(self.DEFAULT_FONT_RELATIVE_PATH)
+        # --- Last-resort fallback ---------------------------------------------------
+        last_resort = default_font_path()
         warnings.warn(
-            f"Font path '{font_path}' not found. Falling back to default relative path: {local_fallback}",
+            f"Font path '{font_path}' not found and no bundled font was located. Using: {last_resort}",
             RuntimeWarning
         )
-        return local_fallback
+        return last_resort
 
     def _load_schema(self) -> dict | None:
         """
@@ -201,6 +214,21 @@ class ConfigManager:
             self._profiles_dir.mkdir(parents=True, exist_ok=True)
         return self._profiles_dir
 
+    _PROFILE_NAME_RE = re.compile(r"^[\w][\w .\-]{0,63}$")
+
+    @classmethod
+    def validate_profile_name(cls, name: str) -> str:
+        """
+        Returns *name* if it is a safe profile name, otherwise raises ``ValueError``.
+
+        Names become file names, so path separators and ``..`` are rejected.
+        """
+        if not isinstance(name, str) or not cls._PROFILE_NAME_RE.match(name) or name.endswith((".", " ")):
+            raise ValueError(
+                f"Invalid profile name '{name}'. Use letters, digits, spaces, '_', '-' or '.' (max 64 characters)."
+            )
+        return name
+
     def save_profile(self, name: str) -> Path:
         """
         Saves the current active configuration as a named profile.
@@ -211,10 +239,16 @@ class ConfigManager:
         Returns:
             The ``Path`` to the saved profile file.
         """
+        self.validate_profile_name(name)
         profile_path = self.profiles_dir / f"{name}.json"
         profile_path.parent.mkdir(parents=True, exist_ok=True)
+        data = json.loads(json.dumps(self.config))
+        # Do not store this machine's install path for the bundled font: keep the
+        # profile portable across installs and updates.
+        if os.path.basename(data.get("font_path", "")) == DEFAULT_FONT_NAME and data["font_path"] == bundled_font_path():
+            data["font_path"] = self.DEFAULT_FONT_RELATIVE_PATH
         with open(profile_path, "w", encoding="utf-8") as f:
-            json.dump(self.config, f, indent=2)
+            json.dump(data, f, indent=2)
         return profile_path
 
     def load_profile(self, name: str) -> dict:
@@ -230,6 +264,7 @@ class ConfigManager:
         Raises:
             FileNotFoundError: If no profile with that name exists.
         """
+        self.validate_profile_name(name)
         profile_path = self.profiles_dir / f"{name}.json"
         if not profile_path.is_file():
             raise FileNotFoundError(f"Profile '{name}' not found at {profile_path}")
@@ -245,6 +280,7 @@ class ConfigManager:
 
         No-op if the profile does not exist.
         """
+        self.validate_profile_name(name)
         profile_path = self.profiles_dir / f"{name}.json"
         if profile_path.is_file():
             profile_path.unlink()

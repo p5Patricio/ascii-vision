@@ -1,7 +1,17 @@
 import cv2
 import numpy as np
+
 from .glyph_cache import GlyphCache
-from .metrics import brightness_mapping_vectorized, compute_mse, compute_ssim
+from .metrics import brightness_mapping_vectorized
+
+# Upper bound on rows * columns of one conversion. Beyond this the work (and the
+# output) becomes unusable, e.g. a 3 px wide image converted at 50 columns would
+# otherwise request thousands of rows.
+MAX_OUTPUT_CELLS = 400_000
+
+# Cells matched per vectorized chunk, bounds temporary memory (cells x glyphs floats).
+_MATCH_CHUNK = 8192
+
 
 class ConversionEngine:
     """
@@ -53,6 +63,16 @@ class ConversionEngine:
         if preprocessing:
             self.preprocessing.update(preprocessing)
             
+        # When True, tones are inverted before matching. Needed for dark-ink-on-light
+        # output (White background) so that bright areas still look bright.
+        self.invert = False
+
+        # Relative weight of matching the *average tone* of a block versus matching
+        # its *shape*. Plain MSE (1.0) cannot reproduce mid-tones because glyph
+        # strokes are binary; a larger weight keeps tones faithful and lets the
+        # shape pick between glyphs of similar density.
+        self.tone_weight = 60.0
+
         # Initialize brightness mapping state
         self.sorted_charset = ""
         self.sorted_densities = np.array([])
@@ -120,6 +140,10 @@ class ConversionEngine:
         """
         Calculates target output rows based on columns, original image size, and character aspect ratio.
         """
+        if cols < 1:
+            raise ValueError(f"columns must be at least 1 (got {cols})")
+        if img_width < 1 or img_height < 1:
+            raise ValueError(f"Image has no pixels ({img_width}x{img_height})")
         ar_glyph = self.glyph_cache.char_aspect_ratio
         rows = int(round(cols * ar_glyph * (img_height / img_width)))
         return max(1, rows), cols
@@ -171,7 +195,12 @@ class ConversionEngine:
         # 2. Determine target rows/columns
         img_height, img_width = preprocessed.shape
         rows, cols = self.get_output_dimensions(img_width, img_height, cols)
-        
+        if rows * cols > MAX_OUTPUT_CELLS:
+            raise ValueError(
+                f"Output of {cols}x{rows} characters is too large (limit {MAX_OUTPUT_CELLS:,} characters). "
+                "Use fewer columns or a less elongated image."
+            )
+
         # Get active glyph shape from pre-rendered cache
         gh, gw = self.glyph_cache.cache.shape[1:]
         
@@ -182,39 +211,34 @@ class ConversionEngine:
         
         # Normalize resized values to [0.0, 1.0]
         resized_normalized = resized.astype(np.float32) / 255.0
+        if self.invert:
+            resized_normalized = 1.0 - resized_normalized
+
+        # Glyphs never cover the whole cell, so even the densest one has a mean
+        # intensity well below 1.0. Comparing raw pixel values would make every
+        # bright area collapse onto the same densest glyph. Remap the image tones
+        # onto the density range the character set can actually produce.
+        if self.metric != "Brightness":
+            densities = self.glyph_cache.cache.mean(axis=(1, 2))
+            low, high = float(densities.min()), float(densities.max())
+            if high - low > 1e-6:
+                resized_normalized = low + resized_normalized * (high - low)
         
         # 4. Segment image into cell blocks using reshape & transpose tricks
         reshaped = resized_normalized.reshape(rows, gh, cols, gw)
         blocks = reshaped.transpose(0, 2, 1, 3)  # Shape: (rows, cols, gh, gw)
         
         # 5. Map blocks to glyphs
-        char_matrix = np.empty((rows, cols), dtype='U1')
         glyphs = self.glyph_cache.cache
         
         if self.metric == "Brightness":
             self._prepare_brightness_mapping()
             # Vectorized mapping for all blocks
             indices = brightness_mapping_vectorized(blocks, len(self.sorted_charset))
-            for r in range(rows):
-                for c in range(cols):
-                    char_matrix[r, c] = self.sorted_charset[indices[r, c]]
+            char_matrix = np.array(list(self.sorted_charset), dtype="U1")[indices]
         else:
-            # Compute similarity row-by-row to balance memory footprint and vectorized execution
-            for r in range(rows):
-                for c in range(cols):
-                    block = blocks[r, c]
-                    if self.metric == "MSE":
-                        scores = compute_mse(block, glyphs)
-                        best_idx = np.argmin(scores)
-                    elif self.metric == "SSIM":
-                        scores = compute_ssim(block, glyphs, dynamic_range=1.0)
-                        best_idx = np.argmax(scores)
-                    else:
-                        scores = compute_mse(block, glyphs)
-                        best_idx = np.argmin(scores)
-                        
-                    char_matrix[r, c] = self.glyph_cache.charset[best_idx]
-                    
+            char_matrix = self._match_blocks(blocks, glyphs, rows, cols)
+
         if color_mode:
             # 6. Extract the average RGB color of each cell/block from the original 'frame'
             if frame.ndim == 2:
@@ -236,6 +260,46 @@ class ConversionEngine:
             return char_matrix, color_matrix
             
         return char_matrix
+
+    def _match_blocks(self, blocks: np.ndarray, glyphs: np.ndarray, rows: int, cols: int) -> np.ndarray:
+        """
+        Picks, for every block, the glyph that best matches it under ``self.metric``
+        (MSE by default, or SSIM). Computed with matrix products over chunks of
+        blocks instead of one NumPy call per cell.
+        """
+        k, gh, gw = glyphs.shape
+        pixels = gh * gw
+        flat_glyphs = glyphs.reshape(k, pixels).astype(np.float64)
+        flat_blocks = blocks.reshape(rows * cols, pixels)
+
+        mu_y = flat_glyphs.mean(axis=1)
+        mean_sq_y = (flat_glyphs ** 2).mean(axis=1)
+        var_y = mean_sq_y - mu_y ** 2
+        use_ssim = self.metric == "SSIM"
+        c1, c2 = (0.01 ** 2), (0.03 ** 2)  # dynamic range 1.0, as in metrics.compute_ssim
+
+        best = np.empty(rows * cols, dtype=np.intp)
+        for start in range(0, rows * cols, _MATCH_CHUNK):
+            chunk = flat_blocks[start:start + _MATCH_CHUNK].astype(np.float64)
+            cross = chunk @ flat_glyphs.T / pixels          # E[x*y], shape (n, k)
+            mu_x = chunk.mean(axis=1)
+            mean_sq_x = (chunk ** 2).mean(axis=1)
+            if use_ssim:
+                var_x = mean_sq_x - mu_x ** 2
+                covariance = cross - mu_x[:, None] * mu_y[None, :]
+                numerator = (2 * mu_x[:, None] * mu_y[None, :] + c1) * (2 * covariance + c2)
+                denominator = (mu_x[:, None] ** 2 + mu_y[None, :] ** 2 + c1) * (var_x[:, None] + var_y[None, :] + c2)
+                denominator = np.where(denominator == 0.0, 1e-10, denominator)
+                best[start:start + len(chunk)] = np.argmax(numerator / denominator, axis=1)
+            else:
+                mse = mean_sq_x[:, None] - 2.0 * cross + mean_sq_y[None, :]
+                if self.tone_weight != 1.0:  # MSE only
+                    tone = (mu_x[:, None] - mu_y[None, :]) ** 2
+                    mse = mse + (self.tone_weight - 1.0) * tone
+                best[start:start + len(chunk)] = np.argmin(mse, axis=1)
+
+        charset = np.array(list(self.glyph_cache.charset), dtype="U1")
+        return charset[best].reshape(rows, cols)
 
     @staticmethod
     def quantize_color(color_matrix: np.ndarray) -> np.ndarray:

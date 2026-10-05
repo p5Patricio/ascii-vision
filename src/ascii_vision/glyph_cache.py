@@ -1,5 +1,7 @@
 import numpy as np
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
+
+from ascii_vision.resources import font_for_charset
 
 CHARSET_PRESETS = {
     "ascii": "".join(chr(i) for i in range(32, 127)),
@@ -29,23 +31,23 @@ class GlyphCache:
 
     def _load_font_and_metrics(self) -> None:
         """
-        Loads the TrueType font and calculates the dynamic glyph aspect ratio using 'M' or 'X'.
+        Loads the TrueType font and derives the character cell aspect ratio.
+
+        If the font cannot draw some characters of the charset (e.g. Braille in
+        JetBrains Mono) a bundled fallback font is used so the glyph bitmaps are
+        meaningful. ``self.font_path`` is updated so exporters can use the same font.
         """
+        self.font_path = font_for_charset(self.font_path, self.charset)
         self.font = ImageFont.truetype(self.font_path, self.font_size)
-        
-        # Measure bounding box of character 'M' (or 'X' as fallback)
+
+        # Aspect ratio = width / height of one character *cell* (advance width over
+        # line height), which is what exporters draw. Measuring the ink of a glyph
+        # would ignore line spacing and make the output rows far too numerous.
         try:
-            bbox = self.font.getbbox("M")
-            # bbox is (left, top, right, bottom)
-            w = bbox[2] - bbox[0]
-            h = bbox[3] - bbox[1]
-            if w <= 0 or h <= 0:
-                # Try 'X'
-                bbox = self.font.getbbox("X")
-                w = bbox[2] - bbox[0]
-                h = bbox[3] - bbox[1]
-            
-            self.char_aspect_ratio = w / h if h > 0 else 0.5
+            ascent, descent = self.font.getmetrics()
+            cell_h = ascent + descent
+            cell_w = int(self.font.getlength("M"))
+            self.char_aspect_ratio = cell_w / cell_h if cell_w > 0 and cell_h > 0 else 0.5
         except Exception:
             self.char_aspect_ratio = 0.5
 

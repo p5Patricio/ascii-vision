@@ -112,3 +112,15 @@ openspec/*.yaml
 openspec/*.json
 .agents/
 .atl/
+
+# Keep the PyInstaller spec used for releases
+!packaging/*.spec
+
+# Promo video: generated files
+promo/frames/
+promo/stills/
+promo/promo_audio.wav
+promo/assets/data.js
+promo/assets/sunset.jpg
+promo/assets/donut_*
+promo/ascii-vision-promo-share.mp4

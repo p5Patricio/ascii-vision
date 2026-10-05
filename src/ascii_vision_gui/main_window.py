@@ -1,40 +1,47 @@
 """Main window for the ASCII Vision GUI."""
 
 import os
+
 import numpy as np
+from PySide6.QtCore import Qt, QThread, QTimer, Slot
+from PySide6.QtGui import QFont, QFontDatabase, QImageReader, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFrame,
-    QLabel,
-    QSlider,
-    QComboBox,
     QCheckBox,
-    QPushButton,
-    QPlainTextEdit,
-    QTextEdit,
-    QProgressBar,
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
     QMessageBox,
+    QPlainTextEdit,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QSpinBox,
     QSplitter,
     QStatusBar,
-    QScrollArea,
-    QFileDialog,
-    QSpinBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt, QThread, Signal, Slot, QSize, QTimer
-from PySide6.QtGui import QPixmap, QFont, QFontDatabase
 
-from ascii_vision.glyph_cache import GlyphCache, CHARSET_PRESETS
-from ascii_vision.engine import ConversionEngine
 from ascii_vision.config import ConfigManager
-from ascii_vision.exporter import to_html, to_txt, ExportManager
-from ascii_vision_gui.worker import ConversionWorker, WebcamWorker
-from ascii_vision_gui.widgets import DropZoneWidget, ComparisonWidget
+from ascii_vision.engine import ConversionEngine
+from ascii_vision.exporter import ExportManager, to_html, to_txt
+from ascii_vision.glyph_cache import CHARSET_PRESETS, GlyphCache
+from ascii_vision.resources import (
+    DEFAULT_FONT_NAME,
+    FALLBACK_FONT_NAME,
+    bundled_font_path,
+    default_font_path,
+)
 from ascii_vision_gui.rendering import AsciiToPixmap
 from ascii_vision_gui.style import QSS_STYLE
+from ascii_vision_gui.widgets import ComparisonWidget, DropZoneWidget
+from ascii_vision_gui.worker import ConversionWorker, WebcamWorker
 
 
 class MainWindow(QMainWindow):
@@ -54,19 +61,19 @@ class MainWindow(QMainWindow):
         self.webcam_worker = None
         self.webcam_thread = None
         self.webcam_provider = None
+        self._active_font_path = None
 
         self._load_bundled_font()
         self._init_ui()
         self.on_preset_changed(self.preset_combo.currentText())
 
     def _load_bundled_font(self):
-        package_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(package_dir))
-        font_file = os.path.abspath(
-            os.path.join(project_root, "assets", "fonts", "JetBrainsMono-Regular.ttf")
-        )
-        if os.path.exists(font_file):
-            QFontDatabase.addApplicationFont(font_file)
+        # Register the bundled fonts with Qt. The fallback font (DejaVu Sans) gives
+        # Qt a source for glyphs JetBrains Mono lacks, such as Braille.
+        for name in (DEFAULT_FONT_NAME, FALLBACK_FONT_NAME):
+            font_file = bundled_font_path(name)
+            if font_file:
+                QFontDatabase.addApplicationFont(font_file)
 
     def _init_ui(self):
         main_splitter = QSplitter(Qt.Horizontal)
@@ -364,8 +371,20 @@ class MainWindow(QMainWindow):
         if not os.path.exists(file_path):
             return
 
+        # Auto-transform applies the EXIF orientation (phone photos are stored sideways),
+        # matching what the conversion pipeline sees.
+        reader = QImageReader(file_path)
+        reader.setAutoTransform(True)
+        image = reader.read()
+        if image.isNull():
+            QMessageBox.warning(
+                self, "Cannot Open Image",
+                f"Could not open '{os.path.basename(file_path)}':\n{reader.errorString()}",
+            )
+            return
+
         self.image_path = file_path
-        self.original_pixmap = QPixmap(file_path)
+        self.original_pixmap = QPixmap.fromImage(image)
         self.comparison_widget.set_original_pixmap(self.original_pixmap)
         self.comparison_widget.set_ascii_pixmap(None)
         self.output_editor.setPlainText("")
@@ -390,12 +409,21 @@ class MainWindow(QMainWindow):
         settings = presets.get(preset_name, presets["Balanced"])
 
         self.scale_slider.setValue(settings["scale"])
-        self.metric_combo.setCurrentText(settings["metric"])
-        self.charset_combo.setCurrentText(settings["charset"])
+        self._select_combo_text(self.metric_combo, settings["metric"])
+        self._select_combo_text(self.charset_combo, settings["charset"])
 
         self.scale_slider.setEnabled(False)
         self.metric_combo.setEnabled(False)
         self.charset_combo.setEnabled(False)
+
+    @staticmethod
+    def _select_combo_text(combo: QComboBox, text: str) -> bool:
+        """Select *text* in a combo box ignoring case (preset keys are lower case, labels are not)."""
+        index = combo.findText(text, Qt.MatchFixedString)
+        if index >= 0:
+            combo.setCurrentIndex(index)
+            return True
+        return False
 
     def _refresh_profiles(self):
         """Reload the profile combo box from ConfigManager."""
@@ -441,24 +469,16 @@ class MainWindow(QMainWindow):
 
         # Metric
         metric = config.get("metric", "MSE")
-        self.metric_combo.setCurrentText(metric)
+        self._select_combo_text(self.metric_combo, metric)
 
-        # Charset
+        # Charset: a preset name selects it; anything else is a custom character set
         charset = config.get("charset", "ascii")
-        charset_map = {
-            "ascii": "ASCII",
-            "shades": "Shades",
-            "blocks": "Blocks",
-            "braille": "Braille",
-        }
-        gui_charset = charset_map.get(charset.lower(), "ASCII")
-        self.charset_combo.setCurrentText(gui_charset)
-        if gui_charset == "Custom":
-            self.custom_charset_label.show()
-            self.custom_charset_input.show()
+        if charset.lower() in CHARSET_PRESETS:
+            self._select_combo_text(self.charset_combo, charset)
         else:
-            self.custom_charset_label.hide()
-            self.custom_charset_input.hide()
+            self._select_combo_text(self.charset_combo, "Custom")
+            self.custom_charset_input.setPlainText(charset)
+        self.on_charset_changed(self.charset_combo.currentText())
 
         # Color mode
         self.color_mode_cb.setChecked(config.get("color_mode", False))
@@ -509,7 +529,7 @@ class MainWindow(QMainWindow):
         else:
             charset_str = CHARSET_PRESETS.get(charset_name.lower(), "ascii")
 
-        font_path = "assets/fonts/JetBrainsMono-Regular.ttf"
+        font_path = ConfigManager.DEFAULT_FONT_RELATIVE_PATH
         font_size = 12
 
         cm = ConfigManager()
@@ -545,7 +565,7 @@ class MainWindow(QMainWindow):
                 f"Complexity: {est['complexity']}\n\n"
                 f"Proceeding may slow down your system. Would you like to proceed, automatically optimize settings, or cancel?"
             )
-            continue_btn = msg_box.addButton("Continue", QMessageBox.AcceptRole)
+            msg_box.addButton("Continue", QMessageBox.AcceptRole)
             optimize_btn = msg_box.addButton("Optimize Automatically", QMessageBox.AcceptRole)
             cancel_btn = msg_box.addButton("Cancel", QMessageBox.RejectRole)
 
@@ -605,7 +625,7 @@ class MainWindow(QMainWindow):
             target_cols = max(10, int((original_w / glyph_w) * (scale / 100.0)))
 
         config = {
-            "font_path": "assets/fonts/JetBrainsMono-Regular.ttf",
+            "font_path": ConfigManager.DEFAULT_FONT_RELATIVE_PATH,
             "font_size": 12,
             "charset": charset_str,
             "preset": self.preset_combo.currentText() if self.preset_combo.currentText() != "Custom" else "Balanced",
@@ -634,6 +654,10 @@ class MainWindow(QMainWindow):
             charset=cm.config["charset"],
         )
 
+        # The cache may have switched to a fallback font (e.g. for Braille); exports
+        # must use that same font.
+        self._active_font_path = glyph_cache.font_path
+
         if not self.aspect_auto_cb.isChecked():
             glyph_cache.char_aspect_ratio = self.aspect_slider.value() / 100.0
 
@@ -653,6 +677,7 @@ class MainWindow(QMainWindow):
                 preset=self.preset_combo.currentText() if self.preset_combo.currentText() != "Custom" else "Balanced",
                 preprocessing=config["preprocessing"],
             )
+            engine.invert = self.bg_color_combo.currentText() == "White"
             engine.glyph_size = g_size
             engine.glyph_cache.render(target_size=g_size, as_float=True)
             self.engine = engine
@@ -831,9 +856,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Save Failed", f"Could not save {fmt.upper()}: {exc}")
 
     def _resolved_font_path(self):
-        package_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(package_dir))
-        return os.path.abspath(os.path.join(project_root, "assets", "fonts", "JetBrainsMono-Regular.ttf"))
+        return self._active_font_path or default_font_path()
 
     def toggle_webcam(self, checked: bool):
         if checked:
@@ -868,13 +891,17 @@ class MainWindow(QMainWindow):
         self.stop_webcam()
 
     def stop_webcam(self):
-        if self.webcam_worker:
-            self.webcam_worker.cancel()
-            self.webcam_worker = None
-        if self.webcam_thread:
-            self.webcam_thread.quit()
-            self.webcam_thread.wait()
-            self.webcam_thread = None
+        # Keep references to the worker and thread until the thread has really
+        # stopped: dropping the worker while its run() is still executing destroys
+        # the QObject under the running thread and crashes the application.
+        worker, thread = self.webcam_worker, self.webcam_thread
+        if worker:
+            worker.cancel()
+        if thread:
+            thread.quit()
+            thread.wait()
+        self.webcam_worker = None
+        self.webcam_thread = None
         # The WebcamWorker owns the provider and cleans it up in its own
         # ``run()`` ``finally`` block, so there is nothing to release here.
         self.webcam_btn.setChecked(False)
