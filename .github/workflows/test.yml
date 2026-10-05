@@ -38,7 +38,7 @@ jobs:
       - name: Lint
         run: ruff check .
 
-      - name: Run tests (offscreen Qt: no display or xcb libraries needed)
+      - name: Run tests (offscreen Qt, no display or xcb libraries needed)
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
