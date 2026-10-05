@@ -31,5 +31,6 @@ the Windows installer. It follows the **Symmetrical Code design system** (`DESIG
   Run workflow). Enable Pages once under *Settings -> Pages -> Source: GitHub Actions*. The site is served from
   <https://ascii.symmetricalcode.com/> (custom domain set in Pages settings; DNS is a `CNAME ascii -> p5patricio.github.io`
   record in the symmetricalcode.com zone). If you serve it from another URL, update `canonical` and `og:image` in `index.html`.
-* **Assets**: `app-screenshot.png` is a real capture of the GUI, `promo.mp4`/`promo-poster.jpg` come from the promo
+* **Assets**: `app-screenshot.png` is a real capture of the GUI (`python promo/capture_gui.py`, which converts the comparer
+  scene in the app itself), `og.jpg` is the social card with that capture composited into its window area, `promo.mp4`/`promo-poster.jpg` come from the promo
   video (see `../promo`), `favicon.svg` is the Symmetrical Code mark. Syne, Geist and Geist Mono are SIL OFL.
