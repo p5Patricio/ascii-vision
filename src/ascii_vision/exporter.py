@@ -410,6 +410,13 @@ def to_clipboard(char_matrix: np.ndarray, color_matrix: np.ndarray = None) -> bo
         from PySide6.QtGui import QGuiApplication
         from PySide6.QtWidgets import QApplication
         if QGuiApplication.instance() is None:
+            if platform.system() == "Linux" and not any(
+                os.environ.get(v) for v in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM")
+            ):
+                # Qt aborts the whole process (not an exception) when it finds no display, so
+                # refuse up front, e.g. when the CLI runs over SSH.
+                logger.warning("No display available: cannot access the clipboard.")
+                return False
             # No Qt app running (e.g. CLI use). Create a QApplication (not a bare
             # QGuiApplication, which would break any widget created later) and keep
             # a module-level reference so it is not destroyed when this call returns.

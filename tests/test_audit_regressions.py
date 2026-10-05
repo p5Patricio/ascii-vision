@@ -301,3 +301,16 @@ def test_cli_success_marker_falls_back_on_ascii_consoles(monkeypatch):
 
     monkeypatch.setattr("sys.stdout", io.TextIOWrapper(io.BytesIO(), encoding="ascii"))
     assert cli._ok("done") == "OK done"
+
+
+def test_clipboard_without_a_display_fails_cleanly_instead_of_aborting(monkeypatch):
+    """Qt calls abort() when there is no display; the exporter must not get that far."""
+    import numpy as np
+
+    from ascii_vision import exporter
+
+    monkeypatch.setattr(exporter.platform, "system", lambda: "Linux")
+    for var in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr("PySide6.QtGui.QGuiApplication.instance", staticmethod(lambda: None))
+    assert exporter.to_clipboard(np.array([["a"]], dtype="U1")) is False
