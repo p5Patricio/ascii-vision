@@ -28,7 +28,8 @@ the Windows installer. It follows the **Symmetrical Code design system** (`DESIG
   the Releases page.
 * **Preview locally**: `python -m http.server -d site 8000` and open <http://localhost:8000> (the CSP needs http, not `file://`).
 * **Publish**: the `Landing page` workflow deploys `site/` to GitHub Pages when you run it by hand (Actions tab ->
-  Run workflow). Enable Pages once under *Settings -> Pages -> Source: GitHub Actions*. If you serve it from another
-  URL, update `canonical` and `og:image` in `index.html`.
+  Run workflow). Enable Pages once under *Settings -> Pages -> Source: GitHub Actions*. The site is served from
+  <https://ascii.symmetricalcode.com/> (custom domain set in Pages settings; DNS is a `CNAME ascii -> p5patricio.github.io`
+  record in the symmetricalcode.com zone). If you serve it from another URL, update `canonical` and `og:image` in `index.html`.
 * **Assets**: `app-screenshot.png` is a real capture of the GUI, `promo.mp4`/`promo-poster.jpg` come from the promo
   video (see `../promo`), `favicon.svg` is the Symmetrical Code mark. Syne, Geist and Geist Mono are SIL OFL.
