@@ -14,8 +14,10 @@ the Windows installer. It follows the **Symmetrical Code design system** (`DESIG
   focus trap, Escape to close), CSS-only grid + glow backdrop, no continuous animation, `prefers-reduced-motion` honoured.
 * **Voice** — Spanish (MX, "tú") with a full English mirror (toggle in the navbar, persisted in `localStorage['sc-lang']`).
 * **The tool's touch** — a single terminal-green accent (`--svc-accent`, the same override mechanism the Symmetrical Code
-  service pages use) and a before/after comparer built from the app's own output (`assets/compare-*.webp`, generated
-  with `ascii-vision --preset "High Quality" --columns 150 --color`).
+  service pages use) and a before/after comparer built from the app's own output. `assets/compare-original.webp` is a procedurally
+  ray-traced scene and `assets/compare-ascii.webp` is its conversion with
+  `ascii-vision --preset "High Quality" --columns 190 --color`; regenerate both with `python promo/gen_compare.py`
+  (no third-party photos).
 * Contrast: text uses `--muted` rather than `--subtle` (3.6:1 dark / 2.9:1 light) and code flags use the brand blue on the
   light theme (the light cyan is 3.7:1), so every text colour clears the 4.5:1 floor the design system asks for.
 
