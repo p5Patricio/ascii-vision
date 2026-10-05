@@ -1,320 +1,265 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ASCII Vision — Convierte imágenes y video en arte ASCII</title>
 <meta name="description" content="ASCII Vision convierte imágenes, video y webcam en arte ASCII, Braille y bloques. Exporta a TXT, HTML, SVG o PNG. Descarga gratis el instalador para Windows.">
-<meta name="theme-color" content="#04091a">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="theme-color" content="#05070b">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="https://p5patricio.github.io/ascii-vision/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="ASCII Vision — Convierte imágenes y video en arte ASCII">
-<meta property="og:description" content="Arrastra una imagen, elige la calidad y exporta a TXT, HTML, SVG o PNG. También video con audio y webcam en vivo. Gratis.">
+<meta property="og:description" content="Arrastra una imagen, elige la calidad y exporta a TXT, HTML, SVG o PNG. También video con audio y webcam en vivo.">
 <meta property="og:image" content="https://p5patricio.github.io/ascii-vision/assets/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="assets/fonts/syne-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/fonts/fonts.css">
-<style>
-:root{--bg:#04091a;--bg2:#070e24;--cy:#19e0ff;--gr:#35e07a;--bl:#1f5cff;--tx:#eaf2ff;--mut:#8b9bc2;--line:rgba(140,180,255,.16)}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--tx);font:400 17px/1.6 'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-a{color:inherit}
-img,video{max-width:100%;height:auto;display:block}
-:focus-visible{outline:3px solid var(--cy);outline-offset:3px;border-radius:6px}
-.skip{position:absolute;left:-999px;top:8px;background:var(--cy);color:#001018;padding:10px 16px;border-radius:8px;z-index:100;font-weight:600}
-.skip:focus{left:8px}
-.wrap{width:min(1160px,100% - 40px);margin-inline:auto}
-.mono{font-family:'Space Mono',monospace}
-/* backdrop */
-.backdrop{position:fixed;inset:0;z-index:-1;background:
-  radial-gradient(900px 560px at 78% -6%,rgba(31,92,255,.32),transparent 70%),
-  radial-gradient(700px 520px at 6% 28%,rgba(25,224,255,.14),transparent 70%),
-  radial-gradient(800px 600px at 60% 100%,rgba(53,224,122,.09),transparent 70%),var(--bg)}
-.backdrop::after{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:64px 64px;opacity:.4;-webkit-mask-image:radial-gradient(ellipse at 50% 20%,#000 10%,transparent 70%);mask-image:radial-gradient(ellipse at 50% 20%,#000 10%,transparent 70%)}
-/* nav */
-header.nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:rgba(4,9,26,.72);border-bottom:1px solid var(--line)}
-.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:68px;gap:16px}
-.brand{display:flex;align-items:center;gap:12px;white-space:nowrap;text-decoration:none;font:800 20px 'Syne';letter-spacing:-.01em}
-.brand img{width:34px;height:34px}
-.nav nav{display:flex;gap:26px;align-items:center;font-size:15px;color:#b9c6e6}
-.nav nav a{text-decoration:none}.nav nav a:hover{color:#fff}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:14px 26px;border-radius:12px;font:700 16px 'Inter';text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .15s,box-shadow .2s,background .2s}
-.btn.primary{background:linear-gradient(135deg,#1f5cff,#19a8ff);color:#fff;box-shadow:0 10px 40px rgba(31,92,255,.45)}
-.btn.primary:hover{transform:translateY(-2px);box-shadow:0 16px 50px rgba(31,92,255,.6)}
-.btn.ghost{background:rgba(20,40,90,.45);border-color:var(--line);color:#dbe6ff}
-.btn.ghost:hover{border-color:var(--cy);color:#fff}
-.btn.sm{padding:10px 18px;font-size:14px;border-radius:10px}
-/* hero */
-.hero{padding:76px 0 40px}
-.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
-.kicker{font:700 13px 'Space Mono';letter-spacing:.22em;color:var(--cy);text-transform:uppercase;display:flex;align-items:center;gap:10px}
-.kicker::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--cy);box-shadow:0 0 14px var(--cy)}
-h1{font:800 clamp(40px,6vw,76px)/1.04 'Syne';letter-spacing:-.025em;margin:20px 0 22px}
-h1 em,h2 em{font-style:normal;color:var(--cy)}
-.lead{font-size:clamp(17px,2vw,20px);color:#b7c4e4;max-width:34em}
-.cta{display:flex;flex-wrap:wrap;gap:14px;margin:34px 0 18px}
-.dlmeta{font:400 13px 'Space Mono';color:var(--mut);min-height:1.4em}
-.dlmeta b{color:#cfe0ff;font-weight:700}
-.shot{position:relative}
-.shot::before{content:"";position:absolute;inset:-8% 0;background:radial-gradient(closest-side,rgba(25,224,255,.28),transparent);filter:blur(30px);z-index:-1}
-.window{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#1e1e1e;box-shadow:0 40px 110px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03)}
-.window .bar{height:34px;background:#2a2a2c;display:flex;align-items:center;gap:8px;padding:0 14px;color:#9a9a9a;font:600 12px 'Inter'}
-.window .bar i{width:11px;height:11px;border-radius:50%;display:block}
-/* sections */
-section{padding:84px 0}
-.eyebrow{font:700 13px 'Space Mono';letter-spacing:.22em;color:var(--cy);text-transform:uppercase}
-h2{font:800 clamp(32px,4.4vw,52px)/1.08 'Syne';letter-spacing:-.02em;margin:14px 0 14px}
-.sub{color:#aebbdc;max-width:38em;font-size:18px}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:46px}
-.card{padding:26px;border-radius:20px;background:linear-gradient(180deg,rgba(14,26,58,.72),rgba(8,15,36,.72));border:1px solid var(--line);transition:transform .2s,border-color .2s}
-.card:hover{transform:translateY(-4px);border-color:rgba(25,224,255,.45)}
-.card .ico{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;background:rgba(25,224,255,.12);border:1px solid rgba(25,224,255,.35);color:var(--cy);font:700 20px 'Space Mono';margin-bottom:18px}
-.card h3{font:800 20px 'Syne';letter-spacing:-.01em;margin-bottom:8px}
-.card p{font-size:15px;color:#a9b7da;line-height:1.55}
-/* video */
-.demo .wrap{display:grid;grid-template-columns:1fr auto;gap:70px;align-items:center}
-.steps{list-style:none;margin-top:34px;display:grid;gap:22px;counter-reset:s}
-.steps li{display:grid;grid-template-columns:52px 1fr;gap:18px;align-items:start}
-.steps li::before{counter-increment:s;content:counter(s);width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font:800 22px 'Syne';background:rgba(31,92,255,.2);border:1px solid rgba(91,141,255,.5);color:#cfe0ff}
-.steps b{display:block;font:800 21px 'Syne';margin-bottom:2px}
-.steps span{color:#a9b7da;font-size:16px}
-.phone{width:min(340px,80vw);border-radius:38px;padding:11px;background:linear-gradient(160deg,#1a2650,#0a1230);border:1px solid var(--line);box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 90px rgba(31,92,255,.25)}
-.phone video{width:100%;aspect-ratio:9/16;border-radius:28px;background:#000;object-fit:cover}
-/* download */
-.download .box{position:relative;overflow:hidden;border-radius:28px;padding:56px;background:linear-gradient(135deg,rgba(31,92,255,.28),rgba(25,224,255,.1) 55%,rgba(8,15,36,.9));border:1px solid rgba(91,141,255,.35);display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center}
-.download h2{margin-top:10px}
-.points{list-style:none;display:grid;gap:10px;margin:22px 0 30px;color:#cfe0ff}
-.points li{display:flex;gap:12px;align-items:flex-start}
-.points li::before{content:"✔";color:var(--gr);font-weight:700}
-.note{font-size:14px;color:var(--mut);margin-top:18px;max-width:40em}
-.alt{background:rgba(3,7,20,.7);border:1px solid var(--line);border-radius:18px;padding:22px;font:400 14px/1.7 'Space Mono';color:#cfe0ff;overflow-x:auto}
-.alt .c{color:#6f84b5}
-.alt .k{color:var(--cy)}.alt .s{color:#ffd27a}
-.alt pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
-.alt h3{font:700 12px 'Space Mono';letter-spacing:.2em;color:var(--mut);text-transform:uppercase;margin-bottom:12px}
-/* cli */
-.cli .wrap{display:grid;grid-template-columns:.9fr 1.1fr;gap:56px;align-items:center}
-.term{background:#070d1d;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.5)}
-.term .bar{background:#0d1730;height:40px;display:flex;align-items:center;gap:8px;padding:0 16px}
-.term .bar i{width:12px;height:12px;border-radius:50%;display:block}
-.term pre{padding:22px 24px;font:400 14.5px/1.85 'Space Mono',monospace;color:#d6e2ff;overflow-x:auto}
-.term .p{color:var(--gr)}.term .f{color:var(--cy)}.term .s{color:#ffd27a}.term .o{color:var(--gr)}
-/* faq */
-details{border:1px solid var(--line);border-radius:16px;padding:20px 24px;background:rgba(10,18,40,.6);margin-top:14px}
-summary{cursor:pointer;font:700 18px 'Syne';list-style:none;display:flex;justify-content:space-between;gap:16px}
-summary::after{content:"+";color:var(--cy);font-size:24px;line-height:1}
-details[open] summary::after{content:"–"}
-details p{margin-top:12px;color:#a9b7da}
-details code{font-family:'Space Mono';font-size:.9em;color:var(--cy)}
-/* footer */
-footer{border-top:1px solid var(--line);padding:46px 0 60px;margin-top:20px}
-footer .wrap{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
-.by{display:flex;align-items:center;gap:16px;min-width:0}
-.by img{width:46px;height:auto}
-.by small{display:block;font:700 11px 'Space Mono';letter-spacing:.28em;color:var(--mut);text-transform:uppercase}
-.by strong{font:800 24px 'Syne';letter-spacing:-.01em}.by strong span{color:var(--bl)}
-footer nav{display:flex;flex-wrap:wrap;gap:10px 22px;color:#aebbdc;font-size:15px}
-footer nav a{text-decoration:none}footer nav a:hover{color:#fff}
-.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s}
-.reveal.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1;transform:none;transition:none}.card,.btn{transition:none}}
-@media (max-width:1020px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero .wrap,.demo .wrap,.cli .wrap,.download .box{grid-template-columns:minmax(0,1fr)}.demo .wrap{gap:44px}.phone{margin-inline:auto}.download .box{padding:34px 26px}.nav nav a:not(.btn){display:none}}
-@media (max-width:560px){.grid{grid-template-columns:minmax(0,1fr)}section{padding:60px 0}.hero{padding-top:44px}.by strong{font-size:19px}.by img{width:38px}.by{gap:12px}}
-@media (max-width:380px){.wrap{width:min(1160px,100% - 28px)}.nav .wrap{gap:8px}.brand{font-size:14px;gap:6px}.brand img{width:28px;height:28px}.nav .btn.sm{padding:8px 10px;font-size:13px}.by strong{font-size:16px}.by small{letter-spacing:.18em}.btn{padding:12px 16px;font-size:15px;white-space:normal;text-align:center}h1{font-size:36px}.cta{gap:10px}}
-</style>
+<link rel="stylesheet" href="style.css">
+<script src="theme-init.js"></script>
 </head>
 <body>
-<a class="skip" href="#descargar">Ir a la descarga</a>
-<div class="backdrop" aria-hidden="true"></div>
+<a class="skip" href="#main" data-i18n="skip">Saltar al contenido</a>
 
-<header class="nav">
-  <div class="wrap">
-    <a class="brand" href="#top" aria-label="ASCII Vision, inicio"><img src="assets/app-icon.png" alt="" width="34" height="34">ASCII Vision</a>
-    <nav aria-label="Principal">
-      <a href="#funciones">Funciones</a>
-      <a href="#video">Video</a>
-      <a href="#terminal">Terminal</a>
+<!-- Icon sprite (Lucide, ISC licence) -->
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-2.93 1.41-1.41m11.32-11.32 1.41-1.41M2 12h2m16 0h2M6.34 6.34 4.93 4.93m14.14 14.14-1.41-1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><path d="m8 3-4 4 4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></symbol>
+</svg>
+
+<header class="nav" id="nav">
+  <div class="nav__in container">
+    <a class="brand" href="#top" aria-label="ASCII Vision">
+      <img src="favicon.svg" width="28" height="28" alt="">
+      <span class="brand__word">ASCII<span>Vision</span></span>
+    </a>
+    <nav class="nav__links" aria-label="Principal" data-i18n-attr="aria-label:nav.label">
+      <a href="#funciones" data-i18n="nav.features">Funciones</a>
+      <a href="#como-funciona" data-i18n="nav.how">Cómo funciona</a>
+      <a href="#terminal" data-i18n="nav.terminal">Terminal</a>
+      <a href="#faq" data-i18n="nav.faq">Preguntas</a>
       <a href="https://github.com/p5Patricio/ascii-vision">GitHub</a>
-      <a class="btn primary sm" href="#descargar">Descargar</a>
     </nav>
+    <div class="nav__actions">
+      <button class="sc-btn sc-btn--secondary sc-btn--icon sc-btn--sm" id="lang" type="button" aria-label="Cambiar idioma" title="Cambiar idioma" data-i18n-attr="aria-label:nav.lang;title:nav.lang"><span class="mono" id="lang-label">EN</span></button>
+      <button class="sc-btn sc-btn--secondary sc-btn--icon sc-btn--sm" id="theme" type="button" aria-label="Cambiar tema" title="Cambiar tema" data-i18n-attr="aria-label:nav.theme;title:nav.theme">
+        <svg class="ico ico--sun" aria-hidden="true"><use href="#i-sun"/></svg>
+        <svg class="ico ico--moon" aria-hidden="true"><use href="#i-moon"/></svg>
+      </button>
+      <a class="sc-btn sc-btn--secondary sc-btn--sm nav__cta" href="#descargar" data-i18n="nav.cta">Descargar</a>
+      <button class="sc-btn sc-btn--secondary sc-btn--icon sc-btn--sm nav__menu" id="menu" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="sheet" data-i18n-attr="aria-label:nav.menu">
+        <svg class="ico ico--open" aria-hidden="true"><use href="#i-menu"/></svg>
+        <svg class="ico ico--close" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
-<main id="top">
-  <section class="hero">
-    <div class="wrap">
-      <div>
-        <div class="kicker">Aplicación de escritorio · Windows</div>
-        <h1>Convierte imágenes y video en <em>arte ASCII.</em></h1>
-        <p class="lead">Arrastra una imagen, elige la calidad y exporta a TXT, HTML, SVG o PNG. También convierte video con audio y muestra tu webcam en vivo. Gratis y de código abierto.</p>
-        <div class="cta">
-          <a id="dl-hero" class="btn primary" href="https://github.com/p5Patricio/ascii-vision/releases/latest">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg>
-            <span>Descargar para Windows</span>
-          </a>
-          <a class="btn ghost" href="#video">▶ Ver el video</a>
-        </div>
-        <p class="dlmeta" id="dlmeta" aria-live="polite">Windows 10 / 11 · Sin instalar Python · Licencia MIT</p>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Menú" data-i18n-attr="aria-label:nav.sheet" hidden>
+  <nav class="sheet__links" aria-label="Principal" data-i18n-attr="aria-label:nav.label">
+    <a href="#funciones" data-i18n="nav.features">Funciones</a>
+    <a href="#como-funciona" data-i18n="nav.how">Cómo funciona</a>
+    <a href="#terminal" data-i18n="nav.terminal">Terminal</a>
+    <a href="#faq" data-i18n="nav.faq">Preguntas</a>
+    <a href="https://github.com/p5Patricio/ascii-vision">GitHub</a>
+  </nav>
+  <a class="sc-btn sc-btn--primary sc-btn--lg" href="#descargar" data-sheet-close>
+    <span data-i18n="nav.cta">Descargar</span><svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg>
+  </a>
+</div>
+
+<main id="main">
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <div class="backdrop" aria-hidden="true"></div>
+    <div class="container hero__in">
+      <p class="eyebrow eyebrow--accent" data-i18n="hero.eyebrow">Aplicación de escritorio · Windows</p>
+      <h1 class="hero__title" data-i18n="hero.title">Convierte imágenes y video en arte ASCII.</h1>
+      <p class="hero__lead" data-i18n="hero.lead">Arrastra una imagen, elige la calidad y exporta a TXT, HTML, SVG o PNG. También convierte video con audio y muestra tu webcam en vivo.</p>
+      <div class="hero__cta">
+        <a class="sc-btn sc-btn--primary sc-btn--lg" id="dl-hero" href="https://github.com/p5Patricio/ascii-vision/releases/latest">
+          <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>
+          <span data-i18n="hero.cta1">Descargar para Windows</span>
+        </a>
+        <a class="sc-btn sc-btn--secondary sc-btn--lg" href="#como-funciona">
+          <span data-i18n="hero.cta2">Ver cómo funciona</span><svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg>
+        </a>
       </div>
-      <div class="shot reveal">
-        <div class="window">
-          <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span style="margin-left:8px">ASCII Vision</span></div>
-          <img src="assets/app-screenshot.png" width="1558" height="820" alt="Ventana de ASCII Vision comparando un paisaje con su versión en arte ASCII a color" loading="eager">
+      <p class="meta mono" id="dlmeta" aria-live="polite" data-i18n="hero.meta">Windows 10 y 11 · No necesitas instalar Python · Licencia MIT</p>
+
+      <figure class="cmp cut-card" id="cmp">
+        <div class="cmp__stage">
+          <img class="cmp__img" src="assets/compare-original.webp" width="960" height="720" alt="Paisaje al atardecer con montañas y un lago: imagen original" data-i18n-attr="alt:cmp.alt1">
+          <img class="cmp__img cmp__ascii" src="assets/compare-ascii.webp" width="960" height="720" alt="El mismo paisaje convertido en arte ASCII a color" data-i18n-attr="alt:cmp.alt2">
+          <span class="cmp__line" aria-hidden="true"><span class="cmp__knob"><svg class="ico"><use href="#i-compare"/></svg></span></span>
+          <span class="cmp__tag cmp__tag--l mono" data-i18n="cmp.l">Original</span>
+          <span class="cmp__tag cmp__tag--r mono">ASCII</span>
+          <input class="cmp__range" id="cmp-range" type="range" min="0" max="100" value="50" step="1" aria-label="Desliza para comparar el original con el arte ASCII" data-i18n-attr="aria-label:cmp.range">
         </div>
+        <figcaption class="mono" data-i18n="cmp.cap">Hecho con ASCII Vision · calidad High Quality · 150 columnas</figcaption>
+        <span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span>
+        <span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section section--lg" id="funciones">
+    <div class="container">
+      <header class="sh sh--xl">
+        <p class="eyebrow" data-i18n="feat.eyebrow">Funciones</p>
+        <h2 class="sh__title" data-i18n="feat.title">Todo lo que necesitas, en una sola app.</h2>
+        <p class="sh__desc" data-i18n="feat.desc">Pensada para que el resultado se vea bien a la primera y para afinarlo cuando quieras.</p>
+      </header>
+      <div class="features">
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-compare"/></svg><h3 data-i18n="f1.t">Arrastra y compara</h3><p data-i18n="f1.d">Suelta una imagen y desliza el divisor para comparar el original con el arte ASCII.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-layers"/></svg><h3 data-i18n="f2.t">Cuatro niveles de calidad</h3><p data-i18n="f2.d">Fast, Balanced, High y Maximum. Cada uno ajusta la métrica (Brightness, MSE, SSIM) y el juego de caracteres.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-type"/></svg><h3 data-i18n="f3.t">Tu juego de caracteres</h3><p data-i18n="f3.d">ASCII, Shades, Blocks y Braille, o define el tuyo con hasta 256 símbolos.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-drop"/></svg><h3 data-i18n="f4.t">Color por carácter</h3><p data-i18n="f4.d">Conserva el color de la imagen y elige fondo negro, blanco o transparente.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-file"/></svg><h3 data-i18n="f5.t">Exporta a lo que quieras</h3><p data-i18n="f5.d">TXT (con color ANSI), HTML autónomo, SVG vectorial, PNG o directo al portapapeles.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-film"/></svg><h3 data-i18n="f6.t">Video con audio</h3><p data-i18n="f6.d">Convierte un video a MP4 H.264 con arte ASCII, conservando el FPS original y el audio. Desde la línea de comandos.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-camera"/></svg><h3 data-i18n="f7.t">Webcam en vivo</h3><p data-i18n="f7.d">Vista previa en tiempo real con calidad adaptativa para sostener los FPS que elijas.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
+        <article class="cut-card feat"><svg class="ico ico--accent" aria-hidden="true"><use href="#i-terminal"/></svg><h3 data-i18n="f8.t">Línea de comandos</h3><p data-i18n="f8.d">Procesa carpetas completas, guarda perfiles y úsalo en tus scripts.</p><span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span><span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span></article>
       </div>
     </div>
   </section>
 
-  <section id="funciones">
-    <div class="wrap">
-      <div class="eyebrow">// Funciones</div>
-      <h2>Todo lo que necesitas, <em>en una sola app.</em></h2>
-      <p class="sub">Una herramienta pensada para que el resultado se vea bien a la primera, sin configurar nada, y para afinarlo cuando quieras.</p>
-      <div class="grid">
-        <article class="card reveal"><div class="ico">⇆</div><h3>Arrastra y compara</h3><p>Suelta una imagen y desliza el divisor para comparar el original con el arte ASCII.</p></article>
-        <article class="card reveal"><div class="ico">◧</div><h3>4 niveles de calidad</h3><p>Fast, Balanced, High y Maximum. Cada uno ajusta la métrica (Brightness, MSE, SSIM) y el juego de caracteres.</p></article>
-        <article class="card reveal"><div class="ico">@</div><h3>Tu juego de caracteres</h3><p>ASCII, Shades, Blocks y Braille, o define el tuyo con hasta 256 símbolos.</p></article>
-        <article class="card reveal"><div class="ico">◐</div><h3>Color por carácter</h3><p>Conserva el color de la imagen y elige fondo negro, blanco o transparente.</p></article>
-        <article class="card reveal"><div class="ico">⤓</div><h3>Exporta a lo que quieras</h3><p>TXT (con color ANSI), HTML autónomo, SVG vectorial, PNG o directo al portapapeles.</p></article>
-        <article class="card reveal"><div class="ico">▶</div><h3>Video con audio</h3><p>Convierte un video a MP4 H.264 con arte ASCII, conservando el FPS original y el audio.</p></article>
-        <article class="card reveal"><div class="ico">◉</div><h3>Webcam en vivo</h3><p>Vista previa en tiempo real con calidad adaptativa para sostener los FPS que elijas.</p></article>
-        <article class="card reveal"><div class="ico">$_</div><h3>Línea de comandos</h3><p>Automatiza: procesa carpetas completas, guarda perfiles y úsalo en tus scripts.</p></article>
-      </div>
-    </div>
-  </section>
-
-  <section id="video" class="demo">
-    <div class="wrap">
+  <!-- How it works -->
+  <section class="section" id="como-funciona">
+    <div class="container split">
       <div>
-        <div class="eyebrow">// Míralo en acción</div>
-        <h2>De imagen a arte ASCII <em>en tres pasos.</em></h2>
-        <p class="sub">Un recorrido de 40 segundos por las funciones principales.</p>
+        <header class="sh sh--lg">
+          <p class="eyebrow" data-i18n="how.eyebrow">Cómo funciona</p>
+          <h2 class="sh__title" data-i18n="how.title">De imagen a arte ASCII en tres pasos.</h2>
+          <p class="sh__desc" data-i18n="how.desc">Un recorrido de 40 segundos por las funciones principales.</p>
+        </header>
         <ol class="steps">
-          <li><div><b>Arrastra</b><span>Suelta cualquier PNG, JPG, BMP, WEBP, TIFF o GIF.</span></div></li>
-          <li><div><b>Elige</b><span>Calidad, caracteres, color y fondo. La vista previa se actualiza al instante.</span></div></li>
-          <li><div><b>Exporta</b><span>Guarda en el formato que necesites o cópialo al portapapeles.</span></div></li>
+          <li><span class="mono">01</span><div><h3 data-i18n="s1.t">Arrastra</h3><p data-i18n="s1.d">Suelta cualquier PNG, JPG, BMP, WEBP, TIFF o GIF.</p></div></li>
+          <li><span class="mono">02</span><div><h3 data-i18n="s2.t">Elige</h3><p data-i18n="s2.d">Calidad, caracteres, color y fondo; después pulsa «Generate ASCII».</p></div></li>
+          <li><span class="mono">03</span><div><h3 data-i18n="s3.t">Exporta</h3><p data-i18n="s3.d">Guarda en TXT, HTML, SVG o PNG, o cópialo al portapapeles.</p></div></li>
         </ol>
       </div>
-      <div class="phone reveal">
-        <video controls playsinline preload="metadata" poster="assets/promo-poster.jpg" aria-label="Video de presentación de ASCII Vision">
+      <figure class="cut-card video">
+        <video controls playsinline preload="metadata" poster="assets/promo-poster.jpg" aria-label="Video de presentación de ASCII Vision" data-i18n-attr="aria-label:video.label">
           <source src="assets/promo.mp4" type="video/mp4">
-          Tu navegador no reproduce video; puedes descargarlo <a href="assets/promo.mp4">aquí</a>.
+          <a href="assets/promo.mp4" data-i18n="video.fallback">Descargar el video</a>
         </video>
-      </div>
+        <span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span>
+        <span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span>
+      </figure>
     </div>
   </section>
 
-  <section id="descargar" class="download">
-    <div class="wrap">
-      <div class="box reveal">
-        <div>
-          <div class="eyebrow">// Descarga</div>
-          <h2>Instálalo en <em>un clic.</em></h2>
-          <ul class="points">
-            <li>Instalador para Windows 10 y 11</li>
-            <li>No necesitas instalar Python ni dependencias</li>
-            <li>Se instala solo para tu usuario, sin permisos de administrador</li>
-            <li>Gratis y de código abierto (MIT)</li>
-          </ul>
-          <a id="dl-main" class="btn primary" href="https://github.com/p5Patricio/ascii-vision/releases/latest">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg>
-            <span>Descargar el instalador</span>
-          </a>
-          <p class="note" id="dlnote">Si Windows muestra «Windows protegió tu PC», pulsa <b>Más información → Ejecutar de todas formas</b>. Aparece porque el instalador aún no cuenta con firma de código.</p>
-        </div>
-        <div class="alt" role="region" aria-label="Otras formas de instalar">
-          <h3>¿Prefieres Python?</h3>
-<pre><span class="c"># Requiere Python 3.13+</span>
+  <!-- Download -->
+  <section class="section" id="descargar">
+    <div class="container split">
+      <div>
+        <header class="sh sh--lg">
+          <p class="eyebrow" data-i18n="dl.eyebrow">Descarga</p>
+          <h2 class="sh__title" data-i18n="dl.title">Instálalo en un clic.</h2>
+        </header>
+        <ul class="checks">
+          <li data-i18n="dl.p1">Instalador para Windows 10 y 11</li>
+          <li data-i18n="dl.p2">No necesitas instalar Python ni dependencias</li>
+          <li data-i18n="dl.p3">Se instala solo para tu usuario, sin permisos de administrador</li>
+          <li data-i18n="dl.p4">Gratis y de código abierto (MIT)</li>
+        </ul>
+        <a class="sc-btn sc-btn--primary sc-btn--lg" id="dl-main" href="https://github.com/p5Patricio/ascii-vision/releases/latest">
+          <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>
+          <span data-i18n="dl.btn">Descargar el instalador</span>
+        </a>
+        <p class="note" data-i18n-html="dl.note">Si Windows muestra «Windows protegió tu PC», pulsa <strong>Más información → Ejecutar de todas formas</strong>. Aparece porque el instalador aún no cuenta con firma de código.</p>
+      </div>
+      <figure class="cut-card code code--wrap" role="region" aria-label="Instalar con Python" data-i18n-attr="aria-label:py.label">
+        <p class="eyebrow" data-i18n="py.title">¿Prefieres Python?</p>
+<pre><span class="c"># Python 3.13+</span>
 <span class="k">pip install</span> "ascii-vision[video] @ git+https://github.com/p5Patricio/ascii-vision"
 <span class="k">ascii-vision-gui</span>
 
-<span class="c"># o clona el repositorio</span>
+<span class="c">#</span> <span class="c" data-i18n="py.or">o clona el repositorio</span>
 <span class="k">git clone</span> https://github.com/p5Patricio/ascii-vision
 <span class="k">pip install</span> -e ".[video]"</pre>
-        </div>
-      </div>
+        <span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span>
+        <span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span>
+      </figure>
     </div>
   </section>
 
-  <section id="terminal" class="cli">
-    <div class="wrap">
-      <div>
-        <div class="eyebrow">// Para automatizar</div>
-        <h2>También en tu <em>terminal.</em></h2>
-        <p class="sub">La misma conversión de la ventana, lista para scripts: lotes, perfiles guardados y video.</p>
-      </div>
-      <div class="term reveal">
-        <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+  <!-- Terminal -->
+  <section class="section" id="terminal">
+    <div class="container split split--code">
+      <header class="sh sh--lg">
+        <p class="eyebrow" data-i18n="cli.eyebrow">Terminal</p>
+        <h2 class="sh__title" data-i18n="cli.title">También en tu terminal.</h2>
+        <p class="sh__desc" data-i18n="cli.desc">La misma conversión de la ventana, lista para scripts: lotes, perfiles guardados y video.</p>
+      </header>
+      <figure class="cut-card code">
 <pre><span class="p">$</span> ascii-vision <span class="f">--input</span> foto.jpg <span class="f">--output</span> arte.png <span class="f">--color</span>
-<span class="o">✔</span> Saved arte.png
-<span class="p">$</span> ascii-vision <span class="f">--input-glob</span> <span class="s">"fotos/*.jpg"</span> <span class="f">--output</span> out/
-<span class="o">✔</span> 48 files converted
+<span class="o">✔ Saved arte.png</span>
+<span class="p">$</span> ascii-vision <span class="f">--input-glob</span> "fotos/*.jpg" <span class="f">--output</span> out/
+<span class="o">✔ 48 files converted</span>
 <span class="p">$</span> ascii-vision <span class="f">--input</span> clip.mp4 <span class="f">--output</span> ascii.mp4
-<span class="o">✔</span> Saved ascii.mp4
+<span class="o">✔ Saved ascii.mp4</span>
 <span class="p">$</span> ascii-vision <span class="f">--save-profile</span> poster <span class="f">--columns</span> 140
-Profile 'poster' saved.</pre>
-      </div>
+<span class="o">Profile 'poster' saved.</span></pre>
+        <span class="cut-card__corner cut-card__corner--tr" aria-hidden="true"></span>
+        <span class="cut-card__corner cut-card__corner--bl" aria-hidden="true"></span>
+      </figure>
     </div>
   </section>
 
-  <section id="faq">
-    <div class="wrap" style="max-width:860px">
-      <div class="eyebrow">// Preguntas frecuentes</div>
-      <h2>Lo que suelen <em>preguntar.</em></h2>
-      <details><summary>¿Es gratis?</summary><p>Sí. ASCII Vision es de código abierto bajo licencia MIT: puedes usarlo, modificarlo y compartirlo.</p></details>
-      <details><summary>¿Funciona en Mac o Linux?</summary><p>El instalador es para Windows. En Mac y Linux puedes usarlo con Python 3.13 o superior, instalándolo desde el repositorio de GitHub (las instrucciones están en la sección de descarga).</p></details>
-      <details><summary>¿Qué formatos de imagen acepta?</summary><p>PNG, JPG, BMP, WEBP, TIFF y GIF. Para video (MP4, AVI, MOV, MKV, WEBM) usa la línea de comandos.</p></details>
-      <details><summary>¿Se conserva el audio al convertir un video?</summary><p>Sí. El resultado mantiene el FPS original y el audio, en MP4 H.264.</p></details>
-      <details><summary>¿Mis imágenes se suben a algún servidor?</summary><p>No. Todo se procesa en tu equipo; la aplicación no envía tus archivos a ningún sitio.</p></details>
+  <!-- FAQ -->
+  <section class="section" id="faq">
+    <div class="container container--narrow">
+      <header class="sh sh--lg">
+        <p class="eyebrow" data-i18n="faq.eyebrow">Preguntas frecuentes</p>
+        <h2 class="sh__title" data-i18n="faq.title">Lo que suelen preguntar.</h2>
+      </header>
+      <div class="faq">
+        <details><summary><span data-i18n="q1.q">¿Es gratis?</span><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary><p data-i18n="q1.a">Sí. ASCII Vision es de código abierto bajo licencia MIT: puedes usarlo, modificarlo y compartirlo.</p></details>
+        <details><summary><span data-i18n="q2.q">¿Funciona en Mac o Linux?</span><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary><p data-i18n="q2.a">El instalador es para Windows. En Mac y Linux puedes usarlo con Python 3.13 o superior, instalándolo desde el repositorio de GitHub (las instrucciones están en la sección de descarga).</p></details>
+        <details><summary><span data-i18n="q3.q">¿Qué formatos de imagen acepta?</span><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary><p data-i18n="q3.a">PNG, JPG, BMP, WEBP, TIFF y GIF. Para video (MP4, AVI, MOV, MKV, WEBM) usa la línea de comandos.</p></details>
+        <details><summary><span data-i18n="q4.q">¿Se conserva el audio al convertir un video?</span><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary><p data-i18n="q4.a">Sí. El resultado mantiene el FPS original y el audio, en MP4 H.264.</p></details>
+        <details><summary><span data-i18n="q5.q">¿Mis imágenes se suben a algún servidor?</span><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary><p data-i18n="q5.a">No. Todo se procesa en tu equipo; la aplicación no envía tus archivos a ningún sitio.</p></details>
+      </div>
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <div class="by">
-      <img src="assets/symmetrical-code.png" alt="Logo de Symmetrical Code" width="46" height="55">
-      <div><small>Desarrollado por</small><strong>Symmetrical<span>Code</span></strong></div>
+<footer class="footer">
+  <div class="container footer__in">
+    <div class="footer__by">
+      <p class="eyebrow" data-i18n="foot.by">Desarrollado por</p>
+      <a class="footer__brand" href="https://symmetricalcode.com" aria-label="Symmetrical Code">
+        <img src="favicon.svg" width="32" height="32" alt="">
+        <span class="brand__word">Symmetrical<span>Code</span></span>
+      </a>
+      <p class="footer__tag" data-i18n="foot.tag">Convertimos ideas claras en productos digitales listos para crecer.</p>
     </div>
-    <nav aria-label="Enlaces">
-      <a href="https://github.com/p5Patricio/ascii-vision">Código en GitHub</a>
-      <a href="https://github.com/p5Patricio/ascii-vision/releases">Versiones</a>
-      <a href="https://github.com/p5Patricio/ascii-vision/issues">Reportar un problema</a>
-      <a href="https://github.com/p5Patricio/ascii-vision/blob/main/LICENSE">Licencia MIT</a>
+    <nav class="footer__links" aria-label="Enlaces" data-i18n-attr="aria-label:foot.nav">
+      <a href="https://github.com/p5Patricio/ascii-vision" data-i18n="foot.code">Código en GitHub</a>
+      <a href="https://github.com/p5Patricio/ascii-vision/releases" data-i18n="foot.rel">Versiones</a>
+      <a href="https://github.com/p5Patricio/ascii-vision/issues" data-i18n="foot.issue">Reportar un problema</a>
+      <a href="https://github.com/p5Patricio/ascii-vision/blob/main/LICENSE" data-i18n="foot.lic">Licencia MIT</a>
     </nav>
   </div>
 </footer>
 
-<script>
-(function () {
-  var REPO = 'p5Patricio/ascii-vision';
-  var links = [document.getElementById('dl-hero'), document.getElementById('dl-main')];
-  var meta = document.getElementById('dlmeta');
-
-  // Point the download buttons at the newest installer published as a GitHub release asset.
-  try {
-    fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
-      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(function (rel) {
-        var asset = (rel.assets || []).filter(function (a) { return /setup.*\.exe$/i.test(a.name); })[0];
-        if (!asset) return;
-        links.forEach(function (a) { if (a) a.href = asset.browser_download_url; });
-        var mb = (asset.size / 1048576).toFixed(0);
-        meta.innerHTML = 'Versión <b>' + rel.tag_name + '</b> · ' + mb + ' MB · Windows 10 / 11 · Licencia MIT';
-      })
-      .catch(function () { /* no release yet: buttons keep pointing at the releases page */ });
-  } catch (e) { /* ignore */ }
-
-  // Reveal on scroll
-  var els = document.querySelectorAll('.reveal');
-  if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-    }, { threshold: 0.12 });
-    els.forEach(function (el) { io.observe(el); });
-  } else { els.forEach(function (el) { el.classList.add('in'); }); }
-})();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
